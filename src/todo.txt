@@ -1,0 +1,32 @@
+[x] <Builder>
+    [] <CourseBuilder>
+        [] CurriculumElem
+    [] events delegation
+        [] onNavigation
+    [x] <Canvas>
+    [] desktop/mobile modes
+    [] <Elements>
+        [x] layout type
+        [x] text type
+        [x] add to canvas
+        [] crud on canvas
+            [x] remove from parent
+            [] d'n'd 
+            [] constraints
+        [] responsive constraints
+    [] <Element settings>
+        [] base settings
+        [] active element
+        [] apply changes
+    [] <UI settings>
+        [] apply changes
+    [] view/edit modes
+    [] save adapter
+        [] local storage adapter
+        [] server adapter
+    [] load adapter
+        [] local storage adapter
+        [] server adapter
+[] list of templates
+    [] apply to <Canvas>
+
