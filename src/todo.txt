@@ -26,7 +26,7 @@
     [] apply changes
   [] view/edit modes
   [] save adapter
-    [] to plain structure
+    [x] to plain structure
     [x] local storage adapter
     [] server adapter
   [] load adapter

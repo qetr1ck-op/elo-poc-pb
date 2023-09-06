@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import './index.css';
 
-import { makeAutoObservable, makeObservable, observable, toJS } from 'mobx';
+import { makeAutoObservable, toJS } from 'mobx';
 import { observer } from 'mobx-react-lite';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -13,14 +13,15 @@ const genUUID = (): string => crypto.randomUUID();
 
 // ---
 
+type ElementType = 'row' | 'text';
 interface Element {
-  type: string;
+  type: ElementType;
   text: string;
 }
 
-class LayoutElement implements Element {
-  type = 'layout';
-  cols = 1;
+class RowElement implements Element {
+  type: ElementType = 'row';
+  cols: number;
   text: string;
 
   constructor(options: { cols: number; text: string }) {
@@ -30,8 +31,7 @@ class LayoutElement implements Element {
 }
 
 class TextElement implements Element {
-  type = 'text';
-  cols = 1;
+  type: ElementType = 'text';
   text: string;
 
   constructor(options: { text: string }) {
@@ -50,6 +50,7 @@ class ElementsStore {
     this.elements = elements;
   }
 }
+
 const elementsStore = new ElementsStore();
 
 // ---
@@ -59,23 +60,18 @@ interface Node {
   type: string;
   className: string;
   text: string;
+  // TODO: list?
   children: Record<string, Node>;
-  parentNode: Node | null;
+  parent: Node | null;
 }
 
-class TextNode implements Node {
-  id = genUUID();
-  type = 'text-node';
-  className = 'text-node';
-  text: string;
-  children: Record<string, Node> = {};
-
-  parentNode: Node;
-
-  constructor(textNode: TextNode, parentNode: Node) {
-    this.text = textNode.text;
-    this.parentNode = parentNode;
-  }
+class RootNode implements Node {
+  id = 'root';
+  type = 'root-node';
+  className = 'root-node';
+  text = 'root';
+  children: Record<string, RowNode> = {};
+  parent = null;
 }
 
 class RowNode implements Node {
@@ -83,52 +79,48 @@ class RowNode implements Node {
   type = 'row-node';
   className = 'row-node';
   text = 'row';
-  children: Record<string, Node> = {};
-  parentNode: RootNode;
+  children: Record<string, ColNode> = {};
+  parent: RootNode;
 
-  constructor(options: { cols?: number; row?: RowNode; parentNode: RootNode }) {
+  constructor(options: { cols?: number; node?: RowNode; parentNode: RootNode }) {
     makeAutoObservable(this);
 
-    if (options.row) {
-      this.id = options.row.id;
-      this.text = options.row.text;
+    const isNewNode = !options.node;
 
-      const map: Record<string, Node> = {};
-      this.children = Object.values(options.row.children)
-        .map((node) => {
-          // if (node.type === 'col-node') {
-          return new ColNode(node, this);
-          // }
-        })
-        .reduce((acc, el) => {
-          acc[el.id] = el;
-          return acc;
-        }, map);
+    if (isNewNode) {
+      this.create(options.cols);
     } else {
-      this.creteColNodes(options.cols, options.parentNode);
+      this.update(options.node as RowNode);
     }
 
-    this.parentNode = options.parentNode;
+    this.parent = options.parentNode;
   }
 
-  creteColNodes(cols: number, row: RowNode) {
-    const map: Record<string, Node> = {};
+  private update(row: RowNode) {
+    this.id = row.id;
+    this.text = row.text;
 
-    this.children = new Array(cols)
-      .fill(null)
-      .map(() => new ColNode(null, row))
+    const map: Record<string, ColNode> = {};
+
+    this.children = Object.values(row.children)
+      .map((node) => new ColNode(node, this))
       .reduce((acc, el) => {
         acc[el.id] = el;
         return acc;
       }, map);
   }
 
-  // parseColNodes(cols: Record<string, ColNode>) {
+  private create(cols = 1) {
+    const map: Record<string, ColNode> = {};
 
-  //   Object.values(cols).map((col) => {
-  //     new ColNode(col)
-  //   })
-  // }
+    this.children = new Array(cols)
+      .fill(null)
+      .map(() => new ColNode(null, this))
+      .reduce((acc, el) => {
+        acc[el.id] = el;
+        return acc;
+      }, map);
+  }
 }
 
 class ColNode implements Node {
@@ -137,29 +129,49 @@ class ColNode implements Node {
   className = 'col-node';
   text = 'col';
   children: Record<string, Node> = {};
-  parentNode: Node;
+  parent: Node;
 
-  constructor(col: ColNode, parentNode: Node) {
+  constructor(node: ColNode | null, parentNode: RowNode) {
     makeAutoObservable(this);
-    if (col) {
-      this.id = col.id;
-      this.text = col.text;
-
-      const map: Record<string, Node> = {};
-      this.children = Object.values(col.children)
-        .map((node) => {
-          // if (node.type === 'text-node') {
-          return new TextNode(node, this);
-          // }
-          // return node;
-        })
-        .reduce((acc, el) => {
-          acc[el.id] = el;
-          return acc;
-        }, map);
+    if (node) {
+      this.update(node);
     }
+    this.parent = parentNode;
+  }
 
-    this.parentNode = parentNode;
+  private update(node: ColNode) {
+    this.id = node.id;
+    this.text = node.text;
+
+    const map: Record<string, Node> = {};
+    this.children = Object.values(node.children)
+      .map((node) => {
+        // TODO: Node.type guards
+        switch (node.type) {
+          case 'text-node':
+            return new TextNode(node as TextNode, this);
+          default:
+            return node;
+        }
+      })
+      .reduce((acc, el) => {
+        acc[el.id] = el;
+        return acc;
+      }, map);
+  }
+}
+
+class TextNode implements Node {
+  id = genUUID();
+  type = 'text-node';
+  className = 'text-node';
+  text: string;
+  children: Record<string, Node> = {};
+  parent: Node;
+
+  constructor(node: TextNode | TextElement, parentNode: Node) {
+    this.text = node.text;
+    this.parent = parentNode;
   }
 }
 
@@ -188,12 +200,14 @@ class LocalStorageAdapter implements Adapter {
   }
 }
 
-interface RootNode {
-  id: 'root';
-  children: Record<string, Node>;
-}
-
 class CanvasStore {
+  nodes = new RootNode();
+
+  selectedNode: Node | null = null;
+
+  saveAdapters: Adapter[] = [];
+  loadAdapters: Adapter[] = [];
+
   constructor() {
     makeAutoObservable(this);
 
@@ -202,45 +216,35 @@ class CanvasStore {
     this.load();
   }
 
-  nodes: RootNode = {
-    id: 'root',
-    children: {},
-  };
-
-  selectedNodeId: string | null = null;
-
-  saveAdapters: Adapter[] = [];
-  loadAdapters: Adapter[] = [];
-
-  setSelectedNodeId(id: string | null) {
-    this.selectedNodeId = id;
+  setSelectedNode(node: Node) {
+    this.selectedNode = node;
   }
 
-  addRowNode(elem: LayoutElement) {
+  addRowNode(elem: RowElement) {
     const rowNode = new RowNode({ cols: elem.cols, parentNode: this.nodes });
 
     this.nodes.children[rowNode.id] = rowNode;
   }
 
-  removeRowNode(node: RowNode) {
-    delete node.parentNode.children[node.id];
+  removeNode(node: Node) {
+    if (!node.parent) {
+      throw new Error(`No parent node - ${node}`);
+    }
+    delete node.parent.children[node.id];
   }
 
-  removeColChildNode(node: Node) {
-    delete node.parentNode.children[node.id];
-  }
-
-  addTextNode(parenNode: Node, textElOrNode: TextElement | TextNode) {
+  addNode(node: Node | Element, parenNode: Node) {
+    // TODO: Node.type guards, strategy pattern
     // move
-    if (textElOrNode instanceof TextNode) {
-      delete textElOrNode.parentNode.children[textElOrNode.id];
+    if (node instanceof TextNode) {
+      delete node.parent.children[node.id];
 
-      parenNode.children[textElOrNode.id] = textElOrNode;
-      textElOrNode.parentNode = parenNode;
+      parenNode.children[node.id] = node;
+      node.parent = parenNode;
     }
     // create
-    if (textElOrNode instanceof TextElement) {
-      const textNode = new TextNode(textElOrNode, parenNode);
+    if (node instanceof TextElement) {
+      const textNode = new TextNode(node, parenNode);
 
       parenNode.children[textNode.id] = textNode;
     }
@@ -254,37 +258,25 @@ class CanvasStore {
   }
 
   // Function to recursively set parentNode to null
-  private setParentNodeToNull(node: Node) {
+  private removeParentNode(node: Node) {
     // Set the parentNode of the current node to null
-    node.parentNode = null;
+    node.parent = null;
 
-    // Recursively process child nodes
     for (const key in node.children) {
-      if (node.children.hasOwnProperty(key)) {
-        this.setParentNodeToNull(node.children[key]);
+      if (node.children[key]) {
+        this.removeParentNode(node.children[key]);
       }
     }
 
     return node;
   }
+
+  // plain structure without mobx/circular refs
   private getPlainNodes() {
-    // plain structure without mobx/circular refs
-    const nodes = this.setParentNodeToNull({ ...this.nodes, children: { ...this.nodes.children } });
+    const nodes = this.removeParentNode({ ...this.nodes, children: { ...this.nodes.children } });
 
-    return toJS(nodes);
+    return toJS(nodes) as RootNode;
   }
-
-  // private toRecursiveNodes(node: Node, parent = null) {
-  //   // Set the parentNode property to the actual parent
-  //   node.parentNode = parent;
-
-  //   // Recursively process child nodes
-  //   for (const key in node.children) {
-  //     if (node.children.hasOwnProperty(key)) {
-  //       this.toRecursiveNodes(node.children[key], node);
-  //     }
-  //   }
-  // }
 
   save() {
     this.saveAdapters.forEach((adapter) => {
@@ -296,10 +288,7 @@ class CanvasStore {
     this.saveAdapters.forEach((adapter) => {
       adapter.clear();
     });
-    this.nodes = {
-      id: 'root',
-      children: {},
-    };
+    this.nodes = new RootNode();
   }
 
   load() {
@@ -310,16 +299,14 @@ class CanvasStore {
         return;
       }
 
-      this.nodes.children = Object.values((data as unknown as RootNode).children)
-        .map((node) => {
-          // if (node.type === 'row-node') {
-          return new RowNode({ row: node, parentNode: this.nodes });
-          // }
-        })
+      const map: Record<string, RowNode> = {};
+
+      this.nodes.children = Object.values(data.children)
+        .map((node) => new RowNode({ node, parentNode: this.nodes }))
         .reduce((acc, el) => {
           acc[el.id] = el;
           return acc;
-        }, {});
+        }, map);
     });
   }
 }
@@ -335,8 +322,8 @@ const Builder: React.FC<Props> = observer(({ children }) => {
   return <div className="builder">{children}</div>;
 });
 
-const TextRenderer: React.FC<{ node: TextNode; onRemove: () => void }> = observer(
-  ({ node, onRemove }) => {
+const TextNodeRenderer: React.FC<{ node: TextNode; canvasStore: CanvasStore }> = observer(
+  ({ node, canvasStore }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
       type: 'text',
       item: node,
@@ -354,21 +341,19 @@ const TextRenderer: React.FC<{ node: TextNode; onRemove: () => void }> = observe
         }}
       >
         <div>{node.text}</div>
-        <NodeControls onRemove={onRemove} />
+        <NodeControls onRemove={() => canvasStore.removeNode(node)} />
       </div>
     );
   }
 );
 
-const ColRenderer: React.FC<{ col: ColNode; row: RowNode; canvasStore: CanvasStore }> = observer(
-  ({ col, row, canvasStore }) => {
+const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore }> = observer(
+  ({ node: col, canvasStore }) => {
     const [{ isOver }, drop] = useDrop(
       () => ({
         accept: 'text',
-        drop: (item: TextElement | TextNode) => {
-          console.log('item', item);
-
-          canvasStore.addTextNode(col, item);
+        drop: (item: Node | Element) => {
+          canvasStore.addNode(item, col);
         },
         collect: (monitor) => ({
           isOver: !!monitor.isOver(),
@@ -384,10 +369,12 @@ const ColRenderer: React.FC<{ col: ColNode; row: RowNode; canvasStore: CanvasSto
         })}
         ref={drop}
       >
-        {Object.values(col.children).map((node: TextNode) => (
-          // if (node.type === 'text-node') {
-          <TextRenderer node={node} onRemove={() => canvasStore.removeColChildNode(node)} />
-        ))}
+        {Object.values(col.children).map((node) => {
+          // TODO: strategy
+          if (node instanceof TextNode) {
+            return <TextNodeRenderer key={node.id} node={node} canvasStore={canvasStore} />;
+          }
+        })}
       </div>
     );
   }
@@ -402,12 +389,11 @@ const NodeControls: React.FC<{ onRemove: () => void }> = observer(({ onRemove })
 });
 
 const RowNodeRenderer: React.FC<{
-  node: Node;
-  onClick: (el: Node) => void;
-  onRemove: (el: Node) => void;
-}> = observer(({ node, onClick, onRemove }) => {
+  node: RowNode;
+  canvasStore: CanvasStore;
+}> = observer(({ node, canvasStore }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'layout__inner',
+    type: 'row',
     item: node,
     collect: (monitor) => ({
       isDragging: !!monitor.isDragging(),
@@ -417,17 +403,17 @@ const RowNodeRenderer: React.FC<{
   return (
     <div
       className={node.className}
-      onClick={() => onClick(node)}
+      onClick={() => canvasStore.setSelectedNode(node)}
       ref={drag}
       style={{
         opacity: isDragging ? 0.5 : 1,
       }}
     >
-      <NodeControls onRemove={() => onRemove(node)} />
+      <NodeControls onRemove={() => canvasStore.removeNode(node)} />
 
-      {Object.values(node.children).map((col: ColNode) => {
-        return <ColRenderer key={node.id} row={node} col={col} canvasStore={canvasStore} />;
-      })}
+      {Object.values(node.children).map((node) => (
+        <ColNodeRenderer key={node.id} node={node} canvasStore={canvasStore} />
+      ))}
     </div>
   );
 });
@@ -435,8 +421,8 @@ const RowNodeRenderer: React.FC<{
 const Canvas: React.FC<{ canvasStore: CanvasStore }> = observer(({ canvasStore }) => {
   const [{ isOver }, drop] = useDrop(
     () => ({
-      accept: 'layout',
-      drop: (item: LayoutElement) => {
+      accept: 'row',
+      drop: (item: RowElement) => {
         canvasStore.addRowNode(item);
       },
       collect: (monitor) => ({
@@ -446,8 +432,6 @@ const Canvas: React.FC<{ canvasStore: CanvasStore }> = observer(({ canvasStore }
     // [x, y] deps!
   );
   const rootEl = canvasStore.nodes;
-
-  console.log('rootEl', rootEl);
 
   return (
     <div className="builder__canvas">
@@ -463,19 +447,8 @@ const Canvas: React.FC<{ canvasStore: CanvasStore }> = observer(({ canvasStore }
       <div className={classNames('root', { 'root--is-over': isOver })} ref={drop}>
         <div>root elem</div>
 
-        {Object.values(rootEl.children).map((node: RowNode) => {
-          return (
-            <RowNodeRenderer
-              key={node.id}
-              node={node}
-              onClick={(node) => {
-                canvasStore.setSelectedNodeId(node.id);
-              }}
-              onRemove={(node) => {
-                canvasStore.removeRowNode(node);
-              }}
-            />
-          );
+        {Object.values(rootEl.children).map((node) => {
+          return <RowNodeRenderer key={node.id} node={node} canvasStore={canvasStore} />;
         })}
       </div>
     </div>
@@ -508,9 +481,9 @@ const ElementRenderer: React.FC<{ element: Element }> = observer(({ element }) =
 const Elements: React.FC<{ elementsStore: ElementsStore }> = observer(({ elementsStore }) => {
   useEffect(() => {
     elementsStore.register([
-      new LayoutElement({ cols: 1, text: '1' }),
-      new LayoutElement({ cols: 2, text: '1|1' }),
-      new LayoutElement({ cols: 3, text: '1|1|1' }),
+      new RowElement({ cols: 1, text: '1' }),
+      new RowElement({ cols: 2, text: '1|1' }),
+      new RowElement({ cols: 3, text: '1|1|1' }),
       new TextElement({ text: 'Text' }),
     ]);
   }, []);

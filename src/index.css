@@ -26,7 +26,7 @@ html {
   padding: 5px;
 }
 
-.builder__elements .layout {
+.builder__elements .row {
   background: cornflowerblue;
   height: 100px;
   margin: 5px 0 5px;
