@@ -57,6 +57,7 @@ const elementsStore = new ElementsStore();
 
 interface Node {
   id: string;
+  // TODO: type
   type: string;
   className: string;
   text: string;
@@ -72,6 +73,10 @@ class RootNode implements Node {
   text = 'root';
   children: Record<string, RowNode> = {};
   parent = null;
+
+  constructor() {
+    makeAutoObservable(this);
+  }
 }
 
 class RowNode implements Node {
@@ -147,12 +152,10 @@ class ColNode implements Node {
     this.children = Object.values(node.children)
       .map((node) => {
         // TODO: Node.type guards
-        switch (node.type) {
-          case 'text-node':
-            return new TextNode(node as TextNode, this);
-          default:
-            return node;
+        if (node instanceof TextNode) {
+          return new TextNode(node, this);
         }
+        return node;
       })
       .reduce((acc, el) => {
         acc[el.id] = el;

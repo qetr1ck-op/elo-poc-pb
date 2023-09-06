@@ -4,27 +4,28 @@
   [] events delegation
     [] onNavigation
   [x] <Canvas>
-    [] desktop/mobile modes
+    [.] desktop/mobile modes
+        [.] responsive styles
     [] <Elements>
-      [x] layout type
+      [x] row type
       [x] text type
       [x] add to canvas
+      [.] image type
     [] <CanvasNode>
-      [] recursive structure
+      [x] recursive structure
       [] crud on canvas
         [x] remove from parent
-        [.] d'n'd 
-        [] constraints
-        [] responsive constraints
+        [] d'n'd 
+        [x] constraints
     [] redo/undo
-    [] pub/sub changes (CQRS)
-  [] <Element settings>
-    [] base settings on <CanvasNode>
-    [] active element
-    [] apply changes
-  [] <UI settings>
-    [] apply changes
-  [] view/edit modes
+    [.] pub/sub changes (CQRS)
+  [.] <Element settings>
+    [.] base settings on Node
+    [.] active element
+    [.] apply changes
+  [.] <UI settings>
+    [.] apply changes
+  [.] view/edit modes
   [] save adapter
     [x] to plain structure
     [x] local storage adapter
@@ -33,8 +34,8 @@
     [x] from plain to recursive structure
     [x] local storage adapter
     [] server adapter
-[] list of templates
+[.] list of templates
   [] apply to <Canvas>
 
-[] prepare for demo
-  [] script
+[.] prepare for demo
+  [.] script
