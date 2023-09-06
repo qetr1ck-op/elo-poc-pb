@@ -60,6 +60,7 @@ interface Node {
   className: string;
   text: string;
   children: Record<string, Node>;
+  parentNode: Node | null;
 }
 
 class TextNode implements Node {
@@ -69,8 +70,11 @@ class TextNode implements Node {
   text: string;
   children: Record<string, Node> = {};
 
-  constructor(options: { text: string }) {
-    this.text = options.text;
+  parentNode: Node;
+
+  constructor(textNode: TextNode, parentNode: Node) {
+    this.text = textNode.text;
+    this.parentNode = parentNode;
   }
 }
 
@@ -80,8 +84,9 @@ class RowNode implements Node {
   className = 'row-node';
   text = 'row';
   children: Record<string, Node> = {};
+  parentNode: RootNode;
 
-  constructor(options: { cols?: number; row?: RowNode }) {
+  constructor(options: { cols?: number; row?: RowNode; parentNode: RootNode }) {
     makeAutoObservable(this);
 
     if (options.row) {
@@ -92,7 +97,7 @@ class RowNode implements Node {
       this.children = Object.values(options.row.children)
         .map((node) => {
           // if (node.type === 'col-node') {
-          return new ColNode(node);
+          return new ColNode(node, this);
           // }
         })
         .reduce((acc, el) => {
@@ -100,16 +105,18 @@ class RowNode implements Node {
           return acc;
         }, map);
     } else {
-      this.creteColNodes(options.cols);
+      this.creteColNodes(options.cols, options.parentNode);
     }
+
+    this.parentNode = options.parentNode;
   }
 
-  creteColNodes(cols: number) {
+  creteColNodes(cols: number, row: RowNode) {
     const map: Record<string, Node> = {};
 
     this.children = new Array(cols)
       .fill(null)
-      .map(() => new ColNode())
+      .map(() => new ColNode(null, row))
       .reduce((acc, el) => {
         acc[el.id] = el;
         return acc;
@@ -130,8 +137,9 @@ class ColNode implements Node {
   className = 'col-node';
   text = 'col';
   children: Record<string, Node> = {};
+  parentNode: Node;
 
-  constructor(col?: ColNode) {
+  constructor(col: ColNode, parentNode: Node) {
     makeAutoObservable(this);
     if (col) {
       this.id = col.id;
@@ -140,16 +148,18 @@ class ColNode implements Node {
       const map: Record<string, Node> = {};
       this.children = Object.values(col.children)
         .map((node) => {
-          if (node.type === 'text-node') {
-            return new TextNode(node);
-          }
-          return node;
+          // if (node.type === 'text-node') {
+          return new TextNode(node, this);
+          // }
+          // return node;
         })
         .reduce((acc, el) => {
           acc[el.id] = el;
           return acc;
         }, map);
     }
+
+    this.parentNode = parentNode;
   }
 }
 
@@ -200,40 +210,81 @@ class CanvasStore {
   selectedNodeId: string | null = null;
 
   saveAdapters: Adapter[] = [];
+  loadAdapters: Adapter[] = [];
 
   setSelectedNodeId(id: string | null) {
     this.selectedNodeId = id;
   }
 
   addRowNode(elem: LayoutElement) {
-    const rowNode = new RowNode({ cols: elem.cols });
+    const rowNode = new RowNode({ cols: elem.cols, parentNode: this.nodes });
 
     this.nodes.children[rowNode.id] = rowNode;
   }
 
-  removeRowNode(id: string) {
-    delete this.nodes.children[id];
+  removeRowNode(node: RowNode) {
+    delete node.parentNode.children[node.id];
   }
 
-  removeColChildNode(col: ColNode, id: string) {
-    delete col.children[id];
+  removeColChildNode(node: Node) {
+    delete node.parentNode.children[node.id];
   }
 
-  addTextNode(rowId: string, colId: string) {
-    const textNode = new TextNode({ text: 'Text' });
+  addTextNode(parenNode: Node, textElOrNode: TextElement | TextNode) {
+    // move
+    if (textElOrNode instanceof TextNode) {
+      delete textElOrNode.parentNode.children[textElOrNode.id];
 
-    this.nodes.children[rowId].children[colId].children[textNode.id] = textNode;
+      parenNode.children[textElOrNode.id] = textElOrNode;
+      textElOrNode.parentNode = parenNode;
+    }
+    // create
+    if (textElOrNode instanceof TextElement) {
+      const textNode = new TextNode(textElOrNode, parenNode);
+
+      parenNode.children[textNode.id] = textNode;
+    }
   }
 
   registerAdapters() {
     const localStorageAdapter = new LocalStorageAdapter();
 
     this.saveAdapters.push(localStorageAdapter);
+    this.loadAdapters.push(localStorageAdapter);
   }
 
-  getPlainNodes() {
-    return toJS(this.nodes);
+  // Function to recursively set parentNode to null
+  private setParentNodeToNull(node: Node) {
+    // Set the parentNode of the current node to null
+    node.parentNode = null;
+
+    // Recursively process child nodes
+    for (const key in node.children) {
+      if (node.children.hasOwnProperty(key)) {
+        this.setParentNodeToNull(node.children[key]);
+      }
+    }
+
+    return node;
   }
+  private getPlainNodes() {
+    // plain structure without mobx/circular refs
+    const nodes = this.setParentNodeToNull({ ...this.nodes, children: { ...this.nodes.children } });
+
+    return toJS(nodes);
+  }
+
+  // private toRecursiveNodes(node: Node, parent = null) {
+  //   // Set the parentNode property to the actual parent
+  //   node.parentNode = parent;
+
+  //   // Recursively process child nodes
+  //   for (const key in node.children) {
+  //     if (node.children.hasOwnProperty(key)) {
+  //       this.toRecursiveNodes(node.children[key], node);
+  //     }
+  //   }
+  // }
 
   save() {
     this.saveAdapters.forEach((adapter) => {
@@ -252,22 +303,24 @@ class CanvasStore {
   }
 
   load() {
-    const data = this.saveAdapters[0].load();
+    this.loadAdapters.forEach((adapter) => {
+      const data = adapter.load();
 
-    if (!data) {
-      return;
-    }
+      if (!data) {
+        return;
+      }
 
-    this.nodes.children = Object.values((data as unknown as RootNode).children)
-      .map((node) => {
-        // if (node.type === 'row-node') {
-        return new RowNode({ row: node });
-        // }
-      })
-      .reduce((acc, el) => {
-        acc[el.id] = el;
-        return acc;
-      }, {});
+      this.nodes.children = Object.values((data as unknown as RootNode).children)
+        .map((node) => {
+          // if (node.type === 'row-node') {
+          return new RowNode({ row: node, parentNode: this.nodes });
+          // }
+        })
+        .reduce((acc, el) => {
+          acc[el.id] = el;
+          return acc;
+        }, {});
+    });
   }
 }
 const canvasStore = new CanvasStore();
@@ -282,11 +335,25 @@ const Builder: React.FC<Props> = observer(({ children }) => {
   return <div className="builder">{children}</div>;
 });
 
-const TextRenderer: React.FC<{ text: string; className: string; onRemove: () => void }> = observer(
-  ({ className, text, onRemove }) => {
+const TextRenderer: React.FC<{ node: TextNode; onRemove: () => void }> = observer(
+  ({ node, onRemove }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+      type: 'text',
+      item: node,
+      collect: (monitor) => ({
+        isDragging: !!monitor.isDragging(),
+      }),
+    }));
+
     return (
-      <div className={className}>
-        <div>{text}</div>
+      <div
+        className={node.className}
+        ref={drag}
+        style={{
+          background: isDragging ? 0.5 : 1,
+        }}
+      >
+        <div>{node.text}</div>
         <NodeControls onRemove={onRemove} />
       </div>
     );
@@ -298,8 +365,10 @@ const ColRenderer: React.FC<{ col: ColNode; row: RowNode; canvasStore: CanvasSto
     const [{ isOver }, drop] = useDrop(
       () => ({
         accept: 'text',
-        drop: () => {
-          canvasStore.addTextNode(row.id, col.id);
+        drop: (item: TextElement | TextNode) => {
+          console.log('item', item);
+
+          canvasStore.addTextNode(col, item);
         },
         collect: (monitor) => ({
           isOver: !!monitor.isOver(),
@@ -316,12 +385,8 @@ const ColRenderer: React.FC<{ col: ColNode; row: RowNode; canvasStore: CanvasSto
         ref={drop}
       >
         {Object.values(col.children).map((node: TextNode) => (
-          <TextRenderer
-            key={node.id}
-            text={node.text}
-            className={node.className}
-            onRemove={() => canvasStore.removeColChildNode(col, node.id)}
-          />
+          // if (node.type === 'text-node') {
+          <TextRenderer node={node} onRemove={() => canvasStore.removeColChildNode(node)} />
         ))}
       </div>
     );
@@ -382,6 +447,8 @@ const Canvas: React.FC<{ canvasStore: CanvasStore }> = observer(({ canvasStore }
   );
   const rootEl = canvasStore.nodes;
 
+  console.log('rootEl', rootEl);
+
   return (
     <div className="builder__canvas">
       <div>Canvas</div>
@@ -405,7 +472,7 @@ const Canvas: React.FC<{ canvasStore: CanvasStore }> = observer(({ canvasStore }
                 canvasStore.setSelectedNodeId(node.id);
               }}
               onRemove={(node) => {
-                canvasStore.removeRowNode(node.id);
+                canvasStore.removeRowNode(node);
               }}
             />
           );

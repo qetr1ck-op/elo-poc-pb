@@ -1,32 +1,40 @@
 [x] <Builder>
-    [] <CourseBuilder>
-        [] CurriculumElem
-    [] events delegation
-        [] onNavigation
-    [x] <Canvas>
+  [] <CourseBuilder>
+    [] CurriculumElem
+  [] events delegation
+    [] onNavigation
+  [x] <Canvas>
     [] desktop/mobile modes
     [] <Elements>
-        [x] layout type
-        [x] text type
-        [x] add to canvas
-        [] crud on canvas
-            [x] remove from parent
-            [] d'n'd 
-            [] constraints
+      [x] layout type
+      [x] text type
+      [x] add to canvas
+    [] <CanvasNode>
+      [] recursive structure
+      [] crud on canvas
+        [x] remove from parent
+        [.] d'n'd 
+        [] constraints
         [] responsive constraints
-    [] <Element settings>
-        [] base settings
-        [] active element
-        [] apply changes
-    [] <UI settings>
-        [] apply changes
-    [] view/edit modes
-    [] save adapter
-        [] local storage adapter
-        [] server adapter
-    [] load adapter
-        [] local storage adapter
-        [] server adapter
+    [] redo/undo
+    [] pub/sub changes (CQRS)
+  [] <Element settings>
+    [] base settings on <CanvasNode>
+    [] active element
+    [] apply changes
+  [] <UI settings>
+    [] apply changes
+  [] view/edit modes
+  [] save adapter
+    [] to plain structure
+    [x] local storage adapter
+    [] server adapter
+  [] load adapter
+    [x] from plain to recursive structure
+    [x] local storage adapter
+    [] server adapter
 [] list of templates
-    [] apply to <Canvas>
+  [] apply to <Canvas>
 
+[] prepare for demo
+  [] script
