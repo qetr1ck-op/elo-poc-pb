@@ -31,7 +31,7 @@ const arrayInsert = (arr, index, newItem) => [
 
 // ---
 
-type ElementType = 'row' | 'text';
+type ElementType = 'row' | 'text' | 'sidebar';
 interface Element {
   type: ElementType;
   text: string;
@@ -53,7 +53,7 @@ interface TextSettings {
   weight: string
 }
 
-const defaultTextSettings = { size: 'font-size-md', weight: 'font-weight-md' }
+const defaultTextSettings: TextSettings = { size: 'font-size-md', weight: 'font-weight-md' }
 
 class TextElement implements Element {
   type: ElementType = 'text';
@@ -63,6 +63,17 @@ class TextElement implements Element {
   constructor(options: { text: string, settings?: TextSettings }) {
     this.text = options.text;
     this.settings = options.settings || defaultTextSettings;
+  }
+}
+
+class SidebarElement implements Element {
+  type: ElementType = 'sidebar';
+  text: string;
+  sidebar: string[]
+
+  constructor(options: { text: string, settings?: TextSettings }) {
+    this.text = options.text;
+    this.sidebar = ['one', 'two']
   }
 }
 
@@ -209,6 +220,23 @@ class TextNode implements Node {
   }
 }
 
+class SidebarNode implements Node {
+  id = genUUID();
+  type = 'sidebar-node';
+  className = 'sidebar-node';
+  text: string;
+  children: Record<string, Node> = {};
+  parent: Node;
+  sidebar: string[]
+
+  constructor(node: SidebarNode, parentNode: Node) {
+    makeAutoObservable(this)
+    this.text = node.text;
+    this.parent = parentNode;
+    this.sidebar = node.sidebar
+  }
+}
+
 interface Adapter {
   save(rootNode: RootNode): void;
   load(): RootNode | null;
@@ -303,10 +331,19 @@ class CanvasStore {
 
       parenNode.children[node.id] = node;
       node.parent = parenNode;
+    } else if (node instanceof SidebarNode) {
+      delete node.parent.children[node.id];
+
+      parenNode.children[node.id] = node;
+      node.parent = parenNode;
     }
     // create
     if (node instanceof TextElement) {
       const textNode = new TextNode(node, parenNode);
+
+      parenNode.children[textNode.id] = textNode;
+    } else if (node instanceof SidebarElement) {
+      const textNode = new SidebarNode(node, parenNode);
 
       parenNode.children[textNode.id] = textNode;
     }
@@ -425,8 +462,9 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
   ({ node: col, canvasStore }) => {
     const [{ isOver }, drop] = useDrop(
       () => ({
-        accept: 'text',
+        accept: ['text', 'sidebar'],
         drop: (item: Node | Element) => {
+        
           if (Object.values(col.children).length === 0) {
             canvasStore.addNode(item, col);
           }
@@ -437,15 +475,9 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
       })
       // [x, y] deps!
     );
-
+    console.log('col', Object.values(col.children))
     return (
       <div
-        // onClick={(e) => {
-        //   console.log(e.target.className)
-        //   if (e.target.className === 'col-node') {
-        //     canvasStore.setSelectedNode(null)
-        //   }
-        // }}
         className={classNames(col.className, {
           '--is-over': isOver,
         })}
@@ -455,6 +487,8 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
           // TODO: strategy
           if (node instanceof TextNode) {
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
+          } else if (node instanceof SidebarNode) {
+            return <SidebarRenderer key={node.id} node={node} />;
           }
         })}
       </div>
@@ -469,6 +503,7 @@ const NodeControls: React.FC<{ onRemove: () => void }> = observer(({ onRemove })
     </div>
   );
 });
+
 const DropArea = ({index, className}: {index: number, className?: string}) => {
   const [{ isOver }, drop] = useDrop(() => ({
       accept: 'row',
@@ -489,7 +524,14 @@ const DropArea = ({index, className}: {index: number, className?: string}) => {
     <div className={`drop-area ${isOver ? 'drop-area--is-over' : '' } ${className}`} ref={drop}/>
   )
 }
-
+const SidebarRenderer = ({node}) => {
+  console.log('SidebarRenderer',node)
+  return (
+    <ul className='sidebar-node'>
+      {node.sidebar.map((item) => (<li>{item}</li>))}
+    </ul>
+  )
+}
 const RowNodeRenderer: React.FC<{
   node: RowNode;
   canvasStore: CanvasStore;
@@ -587,6 +629,7 @@ const Elements: React.FC<{ elementsStore: ElementsStore }> = observer(({ element
       new RowElement({ cols: 2, text: '1|1' }),
       new RowElement({ cols: 3, text: '1|1|1' }),
       new TextElement({ text: 'Text' }),
+      new SidebarElement({ text: 'Sidebar' })
     ]);
   }, []);
 

@@ -48,6 +48,28 @@ html {
   cursor: move;
   font-size: 24px;
 }
+/* ==================== */
+.builder__elements .sidebar {
+  background: burlywood;
+  height: 100px;
+  margin: 5px 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: move;
+  font-size: 24px;
+}
+.sidebar-node {
+  width: 100%;
+  height: 100%;
+  border-radius: 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin: 0;
+  padding: 15px;
+}
+
 
 .builder__canvas {
   outline: darkkhaki dashed 1px;
