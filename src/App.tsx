@@ -445,7 +445,9 @@ class CanvasStore {
       this.selectedNode.settings.list[key] = value
     }
   }
-
+  updateNodeText (val: string){
+    this.selectedNode.text = val
+  }
   registerAdapters() {
     const localStorageAdapter = new LocalStorageAdapter();
 
@@ -800,31 +802,37 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
         </>
       }
 
-        {canvasStore.selectedNode?.settings.type === 'text-settings' &&
-         <>
+      {canvasStore.selectedNode?.settings.type === 'text-settings' &&
+        <>
          <div>Node Settings:</div>
           {Object.keys(canvasStore.selectedNode?.settings.list).map((settingName) => (
             <RadioSwitch
-            key={settingName}
-           label={`${settingName}: `}
-           options={[{
-             label: 'Sm',
-             value: `font-${settingName}-sm`
-           },
-           {
-             label: 'Md',
-             value: `font-${settingName}-md`
-           },
-           {
-             label: 'Lg',
-             value: `font-${settingName}-lg`
-           }]}
-           value={canvasStore?.selectedNode?.settings.list[settingName]}
-           onChange={(val) => {
-             canvasStore.updateNodeSettings(settingName,  val)
-           }}
-         />
+              key={settingName}
+              label={`${settingName}: `}
+              options={[{
+                label: 'Sm',
+                value: `font-${settingName}-sm`
+              },
+              {
+                label: 'Md',
+                value: `font-${settingName}-md`
+              },
+              {
+                label: 'Lg',
+                value: `font-${settingName}-lg`
+              }]}
+              value={canvasStore?.selectedNode?.settings.list[settingName]}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings(settingName,  val)
+              }}
+            />
          ))}
+         <hr/>
+         <TextInput
+            value={canvasStore.selectedNode.text}
+            onChange={(val)=>{canvasStore.updateNodeText(val)}}
+            label='text'
+          />
         </>
       }
       {canvasStore.selectedNode?.settings.type === 'sidebar-settings' &&
