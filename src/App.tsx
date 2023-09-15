@@ -428,7 +428,7 @@ class CanvasStore {
       parenNode.children[node.id] = node;
       node.parent = parenNode;
     }
-    console.log('>>>', node instanceof ImageNode)
+
     // create
     if (node instanceof TextElement) {
       const textNode = new TextNode(node, parenNode);
