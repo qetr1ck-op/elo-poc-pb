@@ -253,6 +253,8 @@ class ColNode implements Node {
           return new TextNode(node as TextNode, this);
         } else if (node instanceof SidebarNode || node.type === "sidebar-node"){
           return new SidebarNode(node as SidebarNode, this);
+        } else if (node instanceof ImageNode || node.type === "image-node"){
+          return new ImageNode(node as ImageNode, this);
         }
         return node;
       })
@@ -426,7 +428,7 @@ class CanvasStore {
       parenNode.children[node.id] = node;
       node.parent = parenNode;
     }
-
+    console.log('>>>', node instanceof ImageNode)
     // create
     if (node instanceof TextElement) {
       const textNode = new TextNode(node, parenNode);
@@ -601,7 +603,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
       })
       // [x, y] deps!
     );
-
+    
     return (
       <div
         className={classNames(col.className, {
@@ -610,6 +612,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         ref={drop}
       >
         {Object.values(col.children).map((node, index) => {
+         
           // TODO: strategy
           if (node instanceof TextNode) {
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
