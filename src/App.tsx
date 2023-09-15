@@ -857,12 +857,8 @@ export default function App() {
   useEffect(() => {
     const data = localStorage.getItem('canvas')
     if (data){
-      const parsedData = JSON.parse(data)
-      const firstId = Object.keys(parsedData)[0]
-      const queryId = window.location.search.split('=')[1]
-
-      if (firstId && `${queryId}` !== `${firstId}`) {
-        // window.location.search = `id=${firstId}`
+      if (window.location.search === '') {
+        window.location.search = `id=root`
       }
     }
 
