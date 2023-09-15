@@ -35,6 +35,7 @@ html {
   justify-content: center;
   cursor: move;
   font-size: 24px;
+  border-radius: 10px;
 }
 
 /* TODO: duplication */
@@ -47,6 +48,7 @@ html {
   justify-content: center;
   cursor: move;
   font-size: 24px;
+  border-radius: 10px;
 }
 /* ==================== */
 .builder__elements .sidebar {
@@ -58,8 +60,10 @@ html {
   justify-content: center;
   cursor: move;
   font-size: 24px;
+  border-radius: 10px;
 }
 .sidebar-node {
+  position: relative;
   background: burlywood;
   width: 100%;
   height: 100%;
@@ -222,7 +226,7 @@ html {
   position: absolute;
   left: 5px;
   right: 5px;
-  top: -19px;
+  top: -20px;
   border-radius: 5px;
 }
 .drop-area--is-over {

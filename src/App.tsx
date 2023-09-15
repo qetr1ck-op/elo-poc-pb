@@ -49,11 +49,17 @@ class RowElement implements Element {
 }
 
 interface TextSettings {
-  size: string
-  weight: string
+  type: 'text-settings'
+  list: {
+    size: string
+    weight: string
+  }
 }
 
-const defaultTextSettings: TextSettings = { size: 'font-size-md', weight: 'font-weight-md' }
+const defaultTextSettings: TextSettings = {
+  type: 'text-settings',
+  list: { size: 'font-size-md', weight: 'font-weight-md' },
+}
 
 class TextElement implements Element {
   type: ElementType = 'text';
@@ -66,14 +72,35 @@ class TextElement implements Element {
   }
 }
 
+interface SidebarSettings {
+  type: 'sidebar-settings'
+  list: {name: string, id: string}[]
+}
+const defaultSidebarSettings: SidebarSettings = {
+  type: 'sidebar-settings',
+  list: [
+    {name: 'first', id: 'root',
+    },
+    {
+      name: 'second', id: 'root2'
+    }
+  ]
+}
+
+
 class SidebarElement implements Element {
   type: ElementType = 'sidebar';
   text: string;
-  sidebar: string[]
+  sidebar: SidebarSettings
 
-  constructor(options: { text: string, settings?: TextSettings }) {
+  constructor(options: { text: string, settings?: SidebarSettings }) {
     this.text = options.text;
-    this.sidebar = ['one', 'two']
+
+    if (options?.settings){
+      this.sidebar = options.settings
+    } else {
+      this.sidebar = defaultSidebarSettings
+    }
   }
 }
 
@@ -106,15 +133,18 @@ interface Node {
 }
 
 class RootNode implements Node {
-  id = 'root';
+  id: string = 'root';
   type = 'root-node';
   className = 'root-node';
   text = 'root';
   children: Record<string, RowNode> = {};
   parent = null;
 
-  constructor() {
+  constructor(id?: string) {
     makeAutoObservable(this);
+    if (id) {
+      this.id = id
+    }
   }
 }
 
@@ -191,8 +221,10 @@ class ColNode implements Node {
     this.children = Object.values(node.children)
       .map((node) => {
         // TODO: Node.type guards
-        if (node instanceof TextNode) {
-          return new TextNode(node, this);
+        if (node instanceof TextNode || node.type === "text-node") {
+          return new TextNode(node as TextNode, this);
+        } else if (node instanceof SidebarNode || node.type === "sidebar-node"){
+          return new SidebarNode(node as SidebarNode, this);
         }
         return node;
       })
@@ -227,7 +259,7 @@ class SidebarNode implements Node {
   text: string;
   children: Record<string, Node> = {};
   parent: Node;
-  sidebar: string[]
+  sidebar: SidebarSettings
 
   constructor(node: SidebarNode, parentNode: Node) {
     makeAutoObservable(this)
@@ -238,33 +270,50 @@ class SidebarNode implements Node {
 }
 
 interface Adapter {
-  save(rootNode: RootNode): void;
-  load(): RootNode | null;
-  clear(): void;
+  save(rootNode: RootNode, id: string): void;
+  load(id: string): RootNode | null;
+  clear(id: string): void;
 }
 
 class LocalStorageAdapter implements Adapter {
-  save(rootNode: RootNode) {
-    localStorage.setItem('canvas', JSON.stringify(rootNode));
+  save(rootNode: RootNode, id: string) {
+    const data = localStorage.getItem('canvas');
+    let newData
+    if (data) {
+      const parsedData = JSON.parse(data)
+      newData = { ...parsedData, [id]: rootNode }
+      
+    } else {
+      newData = { [id]: rootNode }
+    }
+
+    localStorage.setItem('canvas', JSON.stringify(newData));
   }
 
-  load(): RootNode | null {
+  load(id: string): RootNode | null {
     const data = localStorage.getItem('canvas');
 
     if (data) {
-      return JSON.parse(data);
+      const parsedData = JSON.parse(data)
+      console.log('>>>', parsedData)
+      return parsedData[id];
     }
     return null;
   }
 
-  clear() {
-    localStorage.removeItem('canvas');
+  clear(id: string) {
+    const data = localStorage.getItem('canvas');
+    if (data) {
+      const parsedData = JSON.parse(data)
+      delete parsedData[id]
+      localStorage.setItem('canvas', JSON.stringify({ ...parsedData }));
+    }
   }
 }
 
 class CanvasStore {
-  nodes = new RootNode();
-
+  nodes; //
+  queryId: string;
   selectedNode: Node | null = null;
   selectedRowNode: Node | null = null;
 
@@ -273,7 +322,8 @@ class CanvasStore {
 
   constructor() {
     makeAutoObservable(this);
-
+    this.queryId = window.location.search && window.location.search.split('=')[1]
+    this.nodes = new RootNode(this.queryId)
     this.registerAdapters();
 
     this.load();
@@ -349,9 +399,9 @@ class CanvasStore {
     }
   }
 
-  updateNodeSettings (key, value) {
+  updateNodeSettings (key: string, value: string) {
     if (this.selectedNode) {
-      this.selectedNode.settings[key] =value
+      this.selectedNode.settings.list[key] =value
     }
   }
 
@@ -385,20 +435,20 @@ class CanvasStore {
 
   save() {
     this.saveAdapters.forEach((adapter) => {
-      adapter.save(this.getPlainNodes());
+      adapter.save(this.getPlainNodes(), this.queryId);
     });
   }
 
   clear() {
     this.saveAdapters.forEach((adapter) => {
-      adapter.clear();
+      adapter.clear(this.queryId);
     });
-    this.nodes = new RootNode();
+    this.nodes = new RootNode(genUUID());
   }
 
   load() {
     this.loadAdapters.forEach((adapter) => {
-      const data = adapter.load();
+      const data = adapter.load(this.queryId);
 
       if (!data) {
         return;
@@ -431,7 +481,7 @@ const TextNodeRenderer: React.FC<{
   node: TextNode;
   canvasStore: CanvasStore,
   elementsStore:ElementsStore,
-}> = observer(({ node, canvasStore }) => {
+  }> = observer(({ node, canvasStore }) => {
     const [{ isDragging }, drag] = useDrag(() => ({
       type: 'text',
       item: node,
@@ -451,7 +501,7 @@ const TextNodeRenderer: React.FC<{
           background: isDragging ? 'greenyellow' : '',
         }}
       >
-        <div className={`text-value ${Object.values(node.settings).join(' ')}`}>{node.text}</div>
+        <div className={`text-value ${Object.values(node.settings.list).join(' ')}`}>{node.text}</div>
         <NodeControls onRemove={() => canvasStore.removeNode(node)} />
       </div>
     );
@@ -475,7 +525,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
       })
       // [x, y] deps!
     );
-    console.log('col', Object.values(col.children))
+
     return (
       <div
         className={classNames(col.className, {
@@ -484,6 +534,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         ref={drop}
       >
         {Object.values(col.children).map((node, index) => {
+          console.log(node instanceof TextNode)
           // TODO: strategy
           if (node instanceof TextNode) {
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
@@ -524,14 +575,23 @@ const DropArea = ({index, className}: {index: number, className?: string}) => {
     <div className={`drop-area ${isOver ? 'drop-area--is-over' : '' } ${className}`} ref={drop}/>
   )
 }
-const SidebarRenderer = ({node}) => {
-  console.log('SidebarRenderer',node)
+
+const SidebarRenderer = ({node}: {node: SidebarNode}) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'text',
+    item: node,
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
   return (
-    <ul className='sidebar-node'>
-      {node.sidebar.map((item) => (<li>{item}</li>))}
+    <ul className='sidebar-node' ref={drag} style={{scale: isDragging ? 1 : 0.8}}>
+      <NodeControls onRemove={() => canvasStore.removeNode(node)} />
+      {node.sidebar.list.map(({name}, index: number) => (<li key={index}>{name}</li>))}
     </ul>
   )
 }
+
 const RowNodeRenderer: React.FC<{
   node: RowNode;
   canvasStore: CanvasStore;
@@ -572,7 +632,11 @@ const RowNodeRenderer: React.FC<{
 
 const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore }> = observer(({ canvasStore, elementsStore }) => {
   const rootEl = canvasStore.nodes;
-  const lastIndex = Object.values(rootEl.children).length
+
+  if (!rootEl?.children) {
+    return null
+  }
+  const lastIndex = Object.values(rootEl?.children).length
 
   return (
     <div className="builder__canvas">
@@ -658,7 +722,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
       {canvasStore.selectedNode?.settings &&
         <>
           <div>Node Settings:</div>
-          {Object.keys(canvasStore.selectedNode?.settings).map((settingName) => (
+          {Object.keys(canvasStore.selectedNode?.settings.list).map((settingName) => (
             <RadioSwitch
             label={`${settingName}: `}
             options={[{
@@ -673,7 +737,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
               label: 'Lg',
               value: `font-${settingName}-lg`
             }]}
-            value={canvasStore?.selectedNode?.settings[settingName]}
+            value={canvasStore?.selectedNode?.settings.list[settingName]}
             onChange={(val) => {
               canvasStore.updateNodeSettings(settingName,  val)
             }}
@@ -686,6 +750,19 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
 });
 
 export default function App() {
+  useEffect(() => {
+    const data = localStorage.getItem('canvas')
+    if (data){
+      const parsedData = JSON.parse(data)
+      const firstId = Object.keys(parsedData)[0]
+      const queryId = window.location.search.split('=')[1]
+
+      if (firstId && `${queryId}` !== `${firstId}`) {
+        // window.location.search = `id=${firstId}`
+      }
+    }
+
+  }, [])
   return (
     <div className="App">
       <Builder>
