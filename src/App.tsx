@@ -7,7 +7,7 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import classNames from 'classnames';
 import { RadioSwitch } from './RadioSwitch'
-
+import { TextInput } from './TextInput'
 // ---
 
 const genUUID = (): string => crypto.randomUUID();
@@ -76,6 +76,7 @@ interface SidebarSettings {
   type: 'sidebar-settings'
   list: {name: string, id: string}[]
 }
+
 const defaultSidebarSettings: SidebarSettings = {
   type: 'sidebar-settings',
   list: [
@@ -87,20 +88,20 @@ const defaultSidebarSettings: SidebarSettings = {
   ]
 }
 
-
 class SidebarElement implements Element {
   type: ElementType = 'sidebar';
   text: string;
-  sidebar: SidebarSettings
+  settings: SidebarSettings
 
   constructor(options: { text: string, settings?: SidebarSettings }) {
     this.text = options.text;
 
     if (options?.settings){
-      this.sidebar = options.settings
+      this.settings = options.settings
     } else {
-      this.sidebar = defaultSidebarSettings
+      this.settings = defaultSidebarSettings
     }
+
   }
 }
 
@@ -259,13 +260,13 @@ class SidebarNode implements Node {
   text: string;
   children: Record<string, Node> = {};
   parent: Node;
-  sidebar: SidebarSettings
+  settings: SidebarSettings
 
   constructor(node: SidebarNode, parentNode: Node) {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
-    this.sidebar = node.sidebar
+    this.settings = node.settings
   }
 }
 
@@ -295,7 +296,6 @@ class LocalStorageAdapter implements Adapter {
 
     if (data) {
       const parsedData = JSON.parse(data)
-      console.log('>>>', parsedData)
       return parsedData[id];
     }
     return null;
@@ -331,6 +331,7 @@ class CanvasStore {
 
   setSelectedNode(node: Node) {
     this.selectedNode = node;
+   
   }
   setSelectedRowNode(node: Node) {
     this.selectedRowNode = node;
@@ -387,21 +388,22 @@ class CanvasStore {
       parenNode.children[node.id] = node;
       node.parent = parenNode;
     }
+
     // create
     if (node instanceof TextElement) {
       const textNode = new TextNode(node, parenNode);
 
       parenNode.children[textNode.id] = textNode;
     } else if (node instanceof SidebarElement) {
-      const textNode = new SidebarNode(node, parenNode);
+      const sidebarNode = new SidebarNode(node, parenNode);
 
-      parenNode.children[textNode.id] = textNode;
+      parenNode.children[sidebarNode.id] = sidebarNode;
     }
   }
 
   updateNodeSettings (key: string, value: string) {
     if (this.selectedNode) {
-      this.selectedNode.settings.list[key] =value
+      this.selectedNode.settings.list[key] = value
     }
   }
 
@@ -465,6 +467,7 @@ class CanvasStore {
     });
   }
 }
+
 const canvasStore = new CanvasStore();
 
 // ----
@@ -534,12 +537,12 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         ref={drop}
       >
         {Object.values(col.children).map((node, index) => {
-          console.log(node instanceof TextNode)
+        
           // TODO: strategy
           if (node instanceof TextNode) {
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
           } else if (node instanceof SidebarNode) {
-            return <SidebarRenderer key={node.id} node={node} />;
+            return <SidebarRenderer key={node.id} node={node} canvasStore={canvasStore} />;
           }
         })}
       </div>
@@ -576,7 +579,7 @@ const DropArea = ({index, className}: {index: number, className?: string}) => {
   )
 }
 
-const SidebarRenderer = ({node}: {node: SidebarNode}) => {
+const SidebarRenderer = observer(({ node, canvasStore}: {node: SidebarNode, canvasStore: CanvasStore}) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'text',
     item: node,
@@ -584,13 +587,16 @@ const SidebarRenderer = ({node}: {node: SidebarNode}) => {
       isDragging: !!monitor.isDragging(),
     }),
   }));
+
   return (
-    <ul className='sidebar-node' ref={drag} style={{scale: isDragging ? 1 : 0.8}}>
+    <ul className='sidebar-node' ref={drag} style={{scale: isDragging ? 1 : 0.8}} onClick={(e) => {
+      canvasStore.setSelectedNode(node)
+    }}>
       <NodeControls onRemove={() => canvasStore.removeNode(node)} />
-      {node.sidebar.list.map(({name}, index: number) => (<li key={index}>{name}</li>))}
+      {node.settings.list.map(({name}, index: number) => (<li key={index}>{name}</li>))}
     </ul>
   )
-}
+})
 
 const RowNodeRenderer: React.FC<{
   node: RowNode;
@@ -719,29 +725,51 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
         </>
       }
       <br />
-      {canvasStore.selectedNode?.settings &&
-        <>
-          <div>Node Settings:</div>
+        {canvasStore.selectedNode?.settings.type === 'text-settings' &&
+         <>
+         <div>Node Settings:</div>
           {Object.keys(canvasStore.selectedNode?.settings.list).map((settingName) => (
             <RadioSwitch
-            label={`${settingName}: `}
-            options={[{
-              label: 'Sm',
-              value: `font-${settingName}-sm`
-            },
-            {
-              label: 'Md',
-              value: `font-${settingName}-md`
-            },
-            {
-              label: 'Lg',
-              value: `font-${settingName}-lg`
-            }]}
-            value={canvasStore?.selectedNode?.settings.list[settingName]}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings(settingName,  val)
-            }}
-          />
+            key={settingName}
+           label={`${settingName}: `}
+           options={[{
+             label: 'Sm',
+             value: `font-${settingName}-sm`
+           },
+           {
+             label: 'Md',
+             value: `font-${settingName}-md`
+           },
+           {
+             label: 'Lg',
+             value: `font-${settingName}-lg`
+           }]}
+           value={canvasStore?.selectedNode?.settings.list[settingName]}
+           onChange={(val) => {
+             canvasStore.updateNodeSettings(settingName,  val)
+           }}
+         />
+         ))}
+        </>
+      }
+      {canvasStore.selectedNode?.settings.type === 'sidebar-settings' &&
+        <>
+          <div>Node Settings:</div>
+          {canvasStore.selectedNode?.settings.list.map((setting, index) => (
+            <>
+              <TextInput
+                value={setting.id}
+                onChange={(val)=>{canvasStore.updateNodeSettings(index, { ...setting, id: val })}}
+                label='id'
+              />
+              <TextInput
+                key={index}
+                value={setting.name}
+                onChange={(val)=>{canvasStore.updateNodeSettings(index, { ...setting, name: val })}}
+                label='name'
+              />
+              <br/>
+            </>
           ))}
         </>
       }

@@ -10,8 +10,9 @@ export const RadioSwitch = ({ label, options, value, onChange }) => {
       <div className='switch'>
         <div className='switch-label'>{label}</div>
         <div className='switch-values'>
-          {options.map((item) => (
+          {options.map((item, index) => (
             <span
+              key={index}
                 className={`switch-value${curentValuem === item.value ? ' active' : ''}`}
                 onClick={() => {
                 setValue(item.value)
