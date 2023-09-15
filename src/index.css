@@ -87,8 +87,17 @@ html {
   margin: 0;
   padding: 15px;
 }
-
-
+.sidebar-node-item {
+  list-style: none;
+}
+.sidebar-node-item a {
+  text-decoration: underline;
+  color: chocolate;
+}
+.sidebar-node-item.active a {
+  text-decoration: none;
+}
+/* ================== */
 .builder__canvas {
   outline: darkkhaki dashed 1px;
   flex: 3 1;

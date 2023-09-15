@@ -432,7 +432,7 @@ class CanvasStore {
       const textNode = new TextNode(node, parenNode);
       parenNode.children[textNode.id] = textNode;
     } else if (node instanceof SidebarElement) {
-      const sidebarNode = new TextNode(node, parenNode);
+      const sidebarNode = new SidebarNode(node, parenNode);
       parenNode.children[sidebarNode.id] = sidebarNode;
     } else if (node instanceof ImageElement) {
       const imageNode = new ImageNode(node, parenNode);
@@ -610,7 +610,6 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         ref={drop}
       >
         {Object.values(col.children).map((node, index) => {
-        
           // TODO: strategy
           if (node instanceof TextNode) {
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
@@ -668,7 +667,18 @@ const SidebarRenderer = observer(({ node, canvasStore}: {node: SidebarNode, canv
       canvasStore.setSelectedNode(node)
     }}>
       <NodeControls onRemove={() => canvasStore.removeNode(node)} />
-      {node.settings.list.map(({name}, index: number) => (<li key={index}>{name}</li>))}
+      {node.settings.list.map(({name, id}, index: number) => {
+        return(
+        <li
+          key={index}
+          onClick={() => {
+            // canvasStore.setActiveCanvas()
+          }}
+          className={`sidebar-node-item ${canvasStore.nodes.id === id ? 'active' : ''}`}
+        >
+          <a href={`/?id=${id}`}>{name}</a>
+        </li>
+      )})}
     </ul>
   )
 })
