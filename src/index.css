@@ -159,8 +159,15 @@ html {
   margin: 20px;
   min-height: 200px;
   display: flex;
+  flex-direction: column;
   position: relative;
 }
+@media screen and (min-width: 700px) {
+  .root .row-node {
+    flex-direction: row;
+  }
+}
+
 
 .root .row-node:hover {
   outline: aquamarine solid 2px;
