@@ -722,9 +722,10 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
         <>
           <div>Block Settings:</div>
           {canvasStore?.selectedRowNode?.text}-{Object.values(toJS(canvasStore?.selectedRowNode?.children)|| {}).length}
+          <hr />
         </>
       }
-      <br />
+
         {canvasStore.selectedNode?.settings.type === 'text-settings' &&
          <>
          <div>Node Settings:</div>
@@ -761,6 +762,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
                 value={setting.id}
                 onChange={(val)=>{canvasStore.updateNodeSettings(index, { ...setting, id: val })}}
                 label='id'
+                disabled
               />
               <TextInput
                 key={index}
@@ -768,7 +770,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
                 onChange={(val)=>{canvasStore.updateNodeSettings(index, { ...setting, name: val })}}
                 label='name'
               />
-              <br/>
+              <hr/>
             </>
           ))}
         </>
@@ -795,9 +797,7 @@ export default function App() {
     <div className="App">
       <Builder>
         <DndProvider backend={HTML5Backend}>
-          <div>
-            <ElementSettings canvasStore={canvasStore} />
-          </div>
+          <ElementSettings canvasStore={canvasStore} />
           <Elements elementsStore={elementsStore} />
           <Canvas canvasStore={canvasStore} elementsStore={elementsStore} />
         </DndProvider>
