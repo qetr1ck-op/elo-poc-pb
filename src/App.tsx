@@ -166,6 +166,7 @@ class RootNode implements Node {
   className = 'root-node';
   text = 'root';
   children: Record<string, RowNode> = {};
+  sharedchildren: Node
   parent = null;
 
   constructor(id?: string) {
@@ -593,9 +594,9 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         accept: ['text', 'sidebar', 'image'],
         drop: (item: Node | Element) => {
         
-          if (Object.values(col.children).length === 0) {
+          // if (Object.values(col.children).length === 0) {
             canvasStore.addNode(item, col);
-          }
+          // }
         },
         collect: (monitor) => ({
           isOver: !!monitor.isOver(),
