@@ -31,7 +31,7 @@ const arrayInsert = (arr, index, newItem) => [
 
 // ---
 
-type ElementType = 'row' | 'text' | 'sidebar';
+type ElementType = 'row' | 'text' | 'sidebar' | 'image';
 interface Element {
   type: ElementType;
   text: string;
@@ -69,6 +69,33 @@ class TextElement implements Element {
   constructor(options: { text: string, settings?: TextSettings }) {
     this.text = options.text;
     this.settings = options.settings || defaultTextSettings;
+  }
+}
+
+interface ImageSettings {
+  type: 'image-settings'
+  list: {
+    src: string
+    opacity: number
+  }
+}
+
+const defaultImageSettings: ImageSettings = {
+  type: 'image-settings',
+  list: {
+    src: '/image.jpg',
+    opacity: 1,
+  }
+}
+
+class ImageElement implements Element {
+  type: ElementType = 'image';
+  text: string;
+  settings: ImageSettings
+
+  constructor(options: { text: string, settings?: ImageSettings }) {
+    this.text = options.text;
+    this.settings = options.settings || defaultImageSettings;
   }
 }
 
@@ -253,6 +280,23 @@ class TextNode implements Node {
   }
 }
 
+class ImageNode implements Node {
+  id = genUUID();
+  type = 'image-node';
+  className = 'image-node';
+  text: string;
+  children: Record<string, Node> = {};
+  parent: Node;
+  settings: ImageSettings
+
+  constructor(node: ImageElement, parentNode: Node) {
+    makeAutoObservable(this)
+    this.text = node.text;
+    this.parent = parentNode;
+    this.settings = node?.settings || defaultImageSettings;
+  }
+}
+
 class SidebarNode implements Node {
   id = genUUID();
   type = 'sidebar-node';
@@ -377,14 +421,8 @@ class CanvasStore {
   addNode(node: Node | Element, parenNode: Node) {
     // TODO: Node.type guards, strategy pattern
     // move
-    if (node instanceof TextNode) {
+    if (node instanceof TextNode || node instanceof SidebarNode || node instanceof ImageNode) {
       delete node.parent.children[node.id];
-
-      parenNode.children[node.id] = node;
-      node.parent = parenNode;
-    } else if (node instanceof SidebarNode) {
-      delete node.parent.children[node.id];
-
       parenNode.children[node.id] = node;
       node.parent = parenNode;
     }
@@ -392,12 +430,13 @@ class CanvasStore {
     // create
     if (node instanceof TextElement) {
       const textNode = new TextNode(node, parenNode);
-
       parenNode.children[textNode.id] = textNode;
     } else if (node instanceof SidebarElement) {
-      const sidebarNode = new SidebarNode(node, parenNode);
-
+      const sidebarNode = new TextNode(node, parenNode);
       parenNode.children[sidebarNode.id] = sidebarNode;
+    } else if (node instanceof ImageElement) {
+      const imageNode = new ImageNode(node, parenNode);
+      parenNode.children[imageNode.id] = imageNode;
     }
   }
 
@@ -511,11 +550,43 @@ const TextNodeRenderer: React.FC<{
   }
 );
 
+const ImageNodeRenderer: React.FC<{
+  node: ImageNode;
+  canvasStore: CanvasStore,
+  }> = observer(({ node, canvasStore }) => {
+    const [{ isDragging }, drag] = useDrag(() => ({
+      type: 'text',
+      item: node,
+      collect: (monitor) => ({
+        isDragging: !!monitor.isDragging(),
+      }),
+    }));
+
+    return (
+      <div
+        onClick={(e) => {
+          canvasStore.setSelectedNode(node)
+        }}
+        className={node.className}
+        ref={drag}
+        // style={{
+        //   background: isDragging ? 'greenyellow' : '',
+        // }}
+      >
+        <div className={`image-value`}>
+          <img src={node.settings.list.src} />
+        </div>
+        <NodeControls onRemove={() => canvasStore.removeNode(node)} />
+      </div>
+    );
+  }
+);
+
 const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, elementsStore: ElementsStore }> = observer(
   ({ node: col, canvasStore }) => {
     const [{ isOver }, drop] = useDrop(
       () => ({
-        accept: ['text', 'sidebar'],
+        accept: ['text', 'sidebar', 'image'],
         drop: (item: Node | Element) => {
         
           if (Object.values(col.children).length === 0) {
@@ -543,6 +614,8 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
           } else if (node instanceof SidebarNode) {
             return <SidebarRenderer key={node.id} node={node} canvasStore={canvasStore} />;
+          } else if (node instanceof ImageNode) {
+            return <ImageNodeRenderer key={node.id} node={node} canvasStore={canvasStore} />;
           }
         })}
       </div>
@@ -699,6 +772,7 @@ const Elements: React.FC<{ elementsStore: ElementsStore }> = observer(({ element
       new RowElement({ cols: 2, text: '1|1' }),
       new RowElement({ cols: 3, text: '1|1|1' }),
       new TextElement({ text: 'Text' }),
+      new ImageElement({text: 'Image'}),
       new SidebarElement({ text: 'Sidebar' })
     ]);
   }, []);

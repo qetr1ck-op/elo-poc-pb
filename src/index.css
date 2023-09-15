@@ -52,6 +52,17 @@ html {
   font-size: 24px;
   border-radius: 10px;
 }
+.builder__elements .image {
+  background: lightgoldenrodyellow;
+  height: 100px;
+  margin: 5px 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: move;
+  font-size: 24px;
+  border-radius: 10px;
+}
 /* ==================== */
 .builder__elements .sidebar {
   background: burlywood;
@@ -159,6 +170,7 @@ html {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 .col-node.--is-over {
@@ -258,6 +270,17 @@ html {
 .text-value.font-weight-lg {
   font-weight: 900;
 }
+/* ============ */
+/*  image node render */
+.image-value {
+  max-width: 100%;
+}
+.image-value img {
+  max-width: 100%;
+  border-radius: 12px;
+  margin-bottom: -4px;
+}
+
 /* ============ */
 .text-input-wrapper {
   display: flex;
