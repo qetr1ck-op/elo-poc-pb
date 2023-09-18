@@ -9,6 +9,7 @@ import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import classNames from 'classnames';
 import { RadioSwitch } from './RadioSwitch'
+import { ColorPicker } from './ColorPicker'
 import { TextInput } from './TextInput'
 import { Viewer } from './Viewer';
 // ---
@@ -33,7 +34,24 @@ const arrayInsert = (arr, index, newItem) => [
 ]
 
 // ---
-
+type ColorPalette = {
+  brand: string
+  accent: string
+  text: string
+  background: string
+  onBrand: string
+}
+type Styling = {
+  fontSize: string
+  weight: string
+  spacing: string
+  radius: string
+  shadow: string
+}
+interface GlobalStyling {
+  palette: ColorPalette
+  styling: Styling
+}
 type ElementType = 'row' | 'text' | 'sidebar' | 'image';
 interface Element {
   type: ElementType;
@@ -51,27 +69,12 @@ class RowElement implements Element {
   }
 }
 
-interface TextSettings {
-  type: 'text-settings'
-  list: {
-    size: string
-    weight: string
-  }
-}
-
-const defaultTextSettings: TextSettings = {
-  type: 'text-settings',
-  list: { size: 'font-size-md', weight: 'font-weight-md' },
-}
-
 class TextElement implements Element {
   type: ElementType = 'text';
   text: string;
-  settings: TextSettings
 
-  constructor(options: { text: string, settings?: TextSettings }) {
+  constructor(options: { text: string }) {
     this.text = options.text;
-    this.settings = options.settings || defaultTextSettings;
   }
 }
 
@@ -86,7 +89,7 @@ interface ImageSettings {
 const defaultImageSettings: ImageSettings = {
   type: 'image-settings',
   list: {
-    src: '/image.jpg',
+    src: 'http://localhost:5173/image.jpg',
     opacity: 1,
   }
 }
@@ -102,21 +105,12 @@ class ImageElement implements Element {
   }
 }
 
-interface SidebarSettings {
-  type: 'sidebar-settings'
-  list: {name: string, id: string}[]
-}
+type SidebarSettings = {name: string, id: string}[]
 
-const defaultSidebarSettings: SidebarSettings = {
-  type: 'sidebar-settings',
-  list: [
-    {name: 'first', id: 'root',
-    },
-    {
-      name: 'second', id: 'root2'
-    }
-  ]
-}
+const defaultSidebarSettings: SidebarSettings = [
+  { name: 'first', id: 'root', },
+  { name: 'second', id: 'root2', }
+]
 
 class SidebarElement implements Element {
   type: ElementType = 'sidebar';
@@ -169,8 +163,8 @@ class RootNode implements Node {
   className = 'root-node';
   text = 'root';
   children: Record<string, RowNode> = {};
-  sharedchildren: Node
   parent = null;
+  globalSettings: GlobalStyling = globalSetting
 
   constructor(id?: string) {
     makeAutoObservable(this);
@@ -190,7 +184,7 @@ class RowNode implements Node {
 
   constructor(options: { cols?: number; node?: RowNode; parentNode: RootNode }) {
     makeAutoObservable(this);
-
+    this.parent = options.parentNode;
     const isNewNode = !options.node;
 
     if (isNewNode) {
@@ -198,8 +192,6 @@ class RowNode implements Node {
     } else {
       this.update(options.node as RowNode);
     }
-
-    this.parent = options.parentNode;
   }
 
   private update(row: RowNode) {
@@ -207,7 +199,6 @@ class RowNode implements Node {
     this.text = row.text;
 
     const map: Record<string, ColNode> = {};
-
     this.children = Object.values(row.children)
       .map((node) => new ColNode(node, this))
       .reduce((acc, el) => {
@@ -239,10 +230,11 @@ class ColNode implements Node {
 
   constructor(node: ColNode | null, parentNode: RowNode) {
     makeAutoObservable(this);
+
+    this.parent = parentNode;
     if (node) {
       this.update(node);
     }
-    this.parent = parentNode;
   }
 
   private update(node: ColNode) {
@@ -276,13 +268,45 @@ class TextNode implements Node {
   text: string;
   children: Record<string, Node> = {};
   parent: Node;
-  settings: TextSettings
+  localSettings: Partial<GlobalStyling> = {
+    palette: {},
+    styling: {},
+  }
 
   constructor(node: TextNode | TextElement, parentNode: Node) {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
-    this.settings = node?.settings || defaultTextSettings;
+    this.localSettings = node.localSettings
+
+    if (node.localSettings) {
+     this.localSettings = node.localSettings
+    }
+  }
+
+  get settings() {
+
+    // return {
+    //   palette: {
+    //     ...this.parent.parent?.parent?.globalSettings?.palette,
+    //     ...this.localSettings.palette,
+    //   },
+    //   styling: {
+    //     ...this.parent.parent?.parent.globalSettings.styling,
+    //     ...this.localSettings.styling,
+    //   }
+    // }
+    // TODO: how to access to globalSettings
+    return {
+      palette: {
+        ...canvasStore.nodes.globalSettings?.palette,
+        ...this.localSettings.palette,
+      },
+      styling: {
+        ...canvasStore.nodes.globalSettings.styling,
+        ...this.localSettings.styling,
+      }
+    }
   }
 }
 
@@ -293,13 +317,30 @@ class ImageNode implements Node {
   text: string;
   children: Record<string, Node> = {};
   parent: Node;
-  settings: ImageSettings
+  localSettings: Partial<GlobalStyling> = {
+    palette: {},
+    styling: {},
+    src: 'http://localhost:5173/image.jpg',
+  }
 
   constructor(node: ImageElement, parentNode: Node) {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
-    this.settings = node?.settings || defaultImageSettings;
+  }
+
+  get settings() {
+    return {
+      palette: {
+        ...canvasStore.nodes.globalSettings?.palette,
+        ...this.localSettings.palette,
+      },
+      styling: {
+        ...canvasStore.nodes.globalSettings.styling,
+        ...this.localSettings.styling,
+      },
+      src: this.localSettings.src,
+    }
   }
 }
 
@@ -310,13 +351,29 @@ class SidebarNode implements Node {
   text: string;
   children: Record<string, Node> = {};
   parent: Node;
-  settings: SidebarSettings
-
+  localSettings: Partial<GlobalStyling> = {
+    palette: {},
+    styling: {},
+    list: defaultSidebarSettings,
+  }
   constructor(node: SidebarNode, parentNode: Node) {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
-    this.settings = node.settings
+  }
+
+  get settings() {
+    return {
+      palette: {
+        ...canvasStore.nodes.globalSettings?.palette,
+        ...this.localSettings.palette,
+      },
+      styling: {
+        ...canvasStore.nodes.globalSettings.styling,
+        ...this.localSettings.styling,
+      },
+      list: this.localSettings.list
+    }
   }
 }
 
@@ -333,7 +390,6 @@ class LocalStorageAdapter implements Adapter {
     if (data) {
       const parsedData = JSON.parse(data)
       newData = { ...parsedData, [id]: rootNode }
-      
     } else {
       newData = { [id]: rootNode }
     }
@@ -361,6 +417,22 @@ class LocalStorageAdapter implements Adapter {
   }
 }
 
+const globalSetting = {
+  palette: {
+    brand: 'var(--color-brand)',
+    accent:  'var(--color-accent)',
+    text:  'var(--color-background)',
+    background:  'var(--color-text)',
+    onBrand:  'var(--color-on-brand)',
+  },
+  styling: {
+    fontSize:  'var(--font-size)',
+    weight:  'var(--weight)',
+    spacing:  'var(--spacing)',
+    radius:  'var(--radius)',
+    shadow:  'var(--shadow)',
+  },
+}
 class CanvasStore {
   nodes; //
   queryId: string;
@@ -447,9 +519,9 @@ class CanvasStore {
     }
   }
 
-  updateNodeSettings (key: string, value: string) {
+  updateNodeSettings (part: string, key: string, value: string) {
     if (this.selectedNode) {
-      this.selectedNode.settings.list[key] = value
+      this.selectedNode.localSettings[part][key] = value
     }
   }
 
@@ -480,9 +552,9 @@ class CanvasStore {
 
   // plain structure without mobx/circular refs
   private getPlainNodes() {
-    const nodes = this.removeParentNode({ ...this.nodes, children: { ...this.nodes.children } });
-
-    return toJS(nodes) as RootNode;
+    const nodes = toJS(this.nodes);
+console.log(nodes)
+    return this.removeParentNode({ ...nodes, children: { ...this.nodes.children } }) as RootNode;
   }
 
   save() {
@@ -560,7 +632,6 @@ const TextNodeRenderer: React.FC<{
         isDragging: !!monitor.isDragging(),
       }),
     }));
-
     return (
       <div
         onClick={(e) => {
@@ -569,10 +640,22 @@ const TextNodeRenderer: React.FC<{
         className={node.className}
         ref={drag}
         style={{
-          background: isDragging ? 'greenyellow' : '',
+          background: node.settings.palette.background,
+          borderRadius: node.settings.styling.radius,
+          opacity: isDragging ? 0.7 : 1
         }}
       >
-        <div className={`text-value ${Object.values(node.settings.list).join(' ')}`}>{node.text}</div>
+        <div
+          className={`text-value`}
+          style={{
+            fontSize: node.settings.styling.fontSize,
+            fontWeight: node.settings.styling.weight,
+            lineHeight: node.settings.styling.spacing,
+            color: node.settings.palette.text,
+          }}
+        >
+          {node.text}
+        </div>
         <NodeControls onRemove={() => canvasStore.removeNode(node)} />
       </div>
     );
@@ -600,13 +683,57 @@ const ImageNodeRenderer: React.FC<{
         ref={drag}
       >
         <div className={`image-value`}>
-          <img src={node.settings.list.src} />
+          <img src={node.settings.src} />
         </div>
         <NodeControls onRemove={() => canvasStore.removeNode(node)} />
       </div>
     );
   }
 );
+const SidebarRenderer = observer(({ node, canvasStore}: {node: SidebarNode, canvasStore: CanvasStore}) => {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: 'text',
+    item: node,
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
+
+  return (
+    <ul
+      className='sidebar-node'
+      ref={drag}
+      style={{
+        scale: isDragging ? 1 : 0.8,
+        backgroundColor: node.settings.palette.brand,
+      }}
+      onClick={(e) => {
+        canvasStore.setSelectedNode(node)
+      }}
+    >
+      <NodeControls onRemove={() => canvasStore.removeNode(node)} />
+      {node.settings.list.map(({name, id}, index: number) => {
+        return(
+        <li
+          key={index}
+          onClick={() => {
+            // canvasStore.setActiveCanvas()
+          }}
+          className={`sidebar-node-item ${canvasStore.nodes.id === id ? 'active' : ''}`}
+        >
+          <a
+            href={`/?id=${id}`}
+            style={{
+              color: node.settings.palette.onBrand,
+            }}
+          >
+            {name}
+          </a>
+        </li>
+      )})}
+    </ul>
+  )
+})
 
 const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, elementsStore: ElementsStore }> = observer(
   ({ node: col, canvasStore }) => {
@@ -674,35 +801,6 @@ const DropArea = ({index, className}: {index: number, className?: string}) => {
   )
 }
 
-const SidebarRenderer = observer(({ node, canvasStore}: {node: SidebarNode, canvasStore: CanvasStore}) => {
-  const [{ isDragging }, drag] = useDrag(() => ({
-    type: 'text',
-    item: node,
-    collect: (monitor) => ({
-      isDragging: !!monitor.isDragging(),
-    }),
-  }));
-
-  return (
-    <ul className='sidebar-node' ref={drag} style={{scale: isDragging ? 1 : 0.8}} onClick={(e) => {
-      canvasStore.setSelectedNode(node)
-    }}>
-      <NodeControls onRemove={() => canvasStore.removeNode(node)} />
-      {node.settings.list.map(({name, id}, index: number) => {
-        return(
-        <li
-          key={index}
-          onClick={() => {
-            // canvasStore.setActiveCanvas()
-          }}
-          className={`sidebar-node-item ${canvasStore.nodes.id === id ? 'active' : ''}`}
-        >
-          <a href={`/?id=${id}`}>{name}</a>
-        </li>
-      )})}
-    </ul>
-  )
-})
 
 const RowNodeRenderer: React.FC<{
   node: RowNode;
@@ -873,7 +971,150 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
           <hr />
         </>
       }
-
+      {canvasStore.selectedNode &&
+        <>
+        <ColorPicker
+            label='Brand'
+            value={canvasStore?.selectedNode?.settings.palette.brand}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'brand',  val)
+            }}
+          />
+          <ColorPicker
+            label='Accent'
+            value={canvasStore?.selectedNode?.settings.palette.accent}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'accent',  val)
+            }}
+          />
+          <ColorPicker
+            label='Text'
+            value={canvasStore?.selectedNode?.settings.palette.text}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'text',  val)
+            }}
+          />
+          <ColorPicker
+            label='Background'
+            value={canvasStore?.selectedNode?.settings.palette.background}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'background',  val)
+            }}
+          />
+          <ColorPicker
+            label='On Brand'
+            value={canvasStore?.selectedNode?.settings.palette.onBrand}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'onBrand',  val)
+            }}
+          />
+           <hr/>
+          <RadioSwitch
+            label={`Size: `}
+            options={[{
+              label: 'Sm',
+              value: `8px`
+            },
+            {
+              label: 'Md',
+              value: `16px`
+            },
+            {
+              label: 'Lg',
+              value: `32px`
+            }]}
+            value={canvasStore?.selectedNode?.settings.styling.fontSize}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('styling', 'fontSize',  val)
+            }}
+          />
+          <RadioSwitch
+            label={`Spacing: `}
+            options={[{
+              label: 'Sm',
+              value: `1`
+            },
+            {
+              label: 'Md',
+              value: `2`
+            },
+            {
+              label: 'Lg',
+              value: `3`
+            }]}
+            value={canvasStore?.selectedNode?.settings.styling.spacing}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('styling', 'spacing',  val)
+            }}
+          />
+          <RadioSwitch
+            label={`Radius: `}
+            options={[{
+              label: 'Sm',
+              value: `5px`
+            },
+            {
+              label: 'Md',
+              value: `10px`
+            },
+            {
+              label: 'Lg',
+              value: `20px`
+            }]}
+            value={canvasStore?.selectedNode?.settings.styling.radius}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('styling', 'radius',  val)
+            }}
+          />
+          <RadioSwitch
+            label={`Weight: `}
+            options={[{
+              label: 'Sm',
+              value: `300`
+            },
+            {
+              label: 'Md',
+              value: `500`
+            },
+            {
+              label: 'Lg',
+              value: `900`
+            }]}
+            value={canvasStore?.selectedNode?.settings.styling.weight}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('styling', 'weight',  val)
+            }}
+          />
+          <hr/>
+          {canvasStore.selectedNode.type === 'text-node' &&
+            <TextInput
+              value={canvasStore.selectedNode.text}
+              onChange={(val)=>{canvasStore.updateNodeText(val)}}
+              label='text'
+            />
+          }
+          {canvasStore.selectedNode.type === 'sidebar-node' &&
+            canvasStore.selectedNode?.settings.list.map((setting, index) => (
+              <>
+                <TextInput
+                  value={setting.id}
+                  onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, id: val })}}
+                  label='id'
+                  disabled
+                />
+                <TextInput
+                  key={index}
+                  value={setting.name}
+                  onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, name: val })}}
+                  label='name'
+                />
+                <hr/>
+              </>
+            ))
+          }
+        </>
+      }
+{/* 
       {canvasStore.selectedNode?.settings.type === 'text-settings' &&
         <>
          <div>Node Settings:</div>
@@ -910,25 +1151,9 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
       {canvasStore.selectedNode?.settings.type === 'sidebar-settings' &&
         <>
           <div>Node Settings:</div>
-          {canvasStore.selectedNode?.settings.list.map((setting, index) => (
-            <>
-              <TextInput
-                value={setting.id}
-                onChange={(val)=>{canvasStore.updateNodeSettings(index, { ...setting, id: val })}}
-                label='id'
-                disabled
-              />
-              <TextInput
-                key={index}
-                value={setting.name}
-                onChange={(val)=>{canvasStore.updateNodeSettings(index, { ...setting, name: val })}}
-                label='name'
-              />
-              <hr/>
-            </>
-          ))}
+        
         </>
-      }
+      } */}
     </div>
   );
 });

@@ -73,7 +73,7 @@ export const Viewer = ({ nodes }: { nodes: Nodes }) => {
                 if (node.type === 'text-node') {
                   return (
                     <div className={node.className} key={node.id}>
-                      <div className={`text-value ${Object.values(node.settings.list).join(' ')}`}>
+                      <div className={`text-value `}>{/*${Object.values(node.settings.list).join(' ')}*/}
                         {node.text}
                       </div>
                     </div>
@@ -93,7 +93,7 @@ export const Viewer = ({ nodes }: { nodes: Nodes }) => {
                   return (
                     <div className={node.className} key={index}>
                       <div className={`image-value`}>
-                        <img src={node.settings.list.src} />
+                        {/* <img src={node.settings.list.src} /> */}
                       </div>
                     </div>
                   )
