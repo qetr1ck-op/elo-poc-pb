@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import classNames from 'classnames';
+
+import { Viewer } from './Viewer'
 import './index.css'
 
 export default function App() {
@@ -20,51 +21,7 @@ export default function App() {
   return (
     rootEl &&
     <div className="App">
-      <div className='root'>
-        {Object.values(rootEl.children).map((row, index) => {
-          return( 
-            <div className={row.className} key={row.id}>
-              {Object.values(row.children).map((col) => (
-                <div className={classNames(col.className)} key={col.id}>
-                  {Object.values(col.children).map((node, index) => {
-                    if (node.type === 'text-node') {
-                      return (
-                        <div className={node.className} key={node.id}>
-                          <div className={`text-value ${Object.values(node.settings.list).join(' ')}`}>
-                            {node.text}
-                          </div>
-                        </div>
-                      )
-                    } else if (node.type === 'sidebar-node') {
-                      return (
-                        <ul className='sidebar-node' key={index}>
-                          {node.settings.list.map(({name, id}, index: number) => {
-                            return(
-                            <li
-                              key={index}
-                              className={`sidebar-node-item`}
-                            >
-                              <a href={`/?id=${id}`}>{name}</a>
-                            </li>
-                          )})}
-                        </ul>
-                      )
-                    } else if (node.type === 'image-node') {
-                      return (
-                        <div className={node.className} key={index}>
-                        <div className={`image-value`}>
-                          <img src={node.settings.list.src} />
-                        </div>
-                      </div>
-                      )
-                    }
-                  })}
-                </div>
-              ))}
-            </div>
-          )
-        })}
-      </div>
+      <Viewer nodes={rootEl} />
     </div>
   );
 }
