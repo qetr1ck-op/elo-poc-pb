@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { renderToString } from 'react-dom/server';
+
 import './index.css';
 
 import { makeAutoObservable, toJS } from 'mobx';
@@ -8,6 +10,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import classNames from 'classnames';
 import { RadioSwitch } from './RadioSwitch'
 import { TextInput } from './TextInput'
+import { Viewer } from './Viewer';
 // ---
 
 const genUUID = (): string => crypto.randomUUID();
@@ -378,11 +381,12 @@ class CanvasStore {
 
   setSelectedNode(node: Node) {
     this.selectedNode = node;
-   
   }
+
   setSelectedRowNode(node: Node) {
     this.selectedRowNode = node;
   }
+
   addRowNode(elem: RowElement, index) {
     const arr = Object.values(this.nodes.children)
     const newArr = arrayInsert(arr, index, new RowNode({ cols: elem.cols, parentNode: this.nodes }))
@@ -448,9 +452,11 @@ class CanvasStore {
       this.selectedNode.settings.list[key] = value
     }
   }
+
   updateNodeText (val: string){
     this.selectedNode.text = val
   }
+
   registerAdapters() {
     const localStorageAdapter = new LocalStorageAdapter();
 
@@ -509,6 +515,24 @@ class CanvasStore {
           return acc;
         }, map);
     });
+  }
+
+  isPreviewOpened = false
+  html: string = ''
+  css: string = ''
+  view: 'mobile' | 'laptop' = 'laptop'
+
+  setHtml (str) {
+    this.html = str
+    const css = document.getElementsByTagName('style')[0].innerHTML;
+    this.css = css
+  }
+
+  preview () {
+    this.isPreviewOpened = !this.isPreviewOpened
+  }
+  setView (v) {
+    this.view = v
   }
 }
 
@@ -574,9 +598,6 @@ const ImageNodeRenderer: React.FC<{
         }}
         className={node.className}
         ref={drag}
-        // style={{
-        //   background: isDragging ? 'greenyellow' : '',
-        // }}
       >
         <div className={`image-value`}>
           <img src={node.settings.list.src} />
@@ -593,10 +614,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
       () => ({
         accept: ['text', 'sidebar', 'image'],
         drop: (item: Node | Element) => {
-        
-          // if (Object.values(col.children).length === 0) {
-            canvasStore.addNode(item, col);
-          // }
+          canvasStore.addNode(item, col);
         },
         collect: (monitor) => ({
           isOver: !!monitor.isOver(),
@@ -604,7 +622,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
       })
       // [x, y] deps!
     );
-    
+
     return (
       <div
         className={classNames(col.className, {
@@ -613,7 +631,6 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         ref={drop}
       >
         {Object.values(col.children).map((node, index) => {
-         
           // TODO: strategy
           if (node instanceof TextNode) {
             return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
@@ -725,6 +742,34 @@ const RowNodeRenderer: React.FC<{
   );
 });
 
+const IframePreview = observer(({canvasStore}:{canvasStore: CanvasStore}) => (
+  <>
+  <div>
+    <button onClick={() => canvasStore.preview()}>👁️</button>
+    <button onClick={() => canvasStore.setView('mobile')}>📱</button>
+    <button onClick={() => canvasStore.setView('laptop' )}>💻</button>
+  </div>
+  <iframe
+    style={{ width: canvasStore.view === 'mobile' ? '400px' : '100%' }}
+    src={`data:text/html;charset=utf-8,${escape(`
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>HTML Document</title>
+            <style>
+            ${canvasStore.css}
+            </style>
+        </head>
+        <body>
+            ${canvasStore.html}
+        </body>
+      </html>
+    `)}`}
+  ></iframe>
+</>
+))
+
 const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore }> = observer(({ canvasStore, elementsStore }) => {
   const rootEl = canvasStore.nodes;
 
@@ -733,10 +778,20 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
   }
   const lastIndex = Object.values(rootEl?.children).length
 
+  useEffect(() => {
+    const html = renderToString(
+      <Viewer nodes={rootEl} />
+    )
+    canvasStore.setHtml(html)
+  }, [rootEl])
+
   return (
     <div className="builder__canvas">
       <div>Canvas</div>
       <div className="actions">
+        <div className="actions__save" onClick={() => canvasStore.preview()}>
+          👁️
+        </div>
         <div className="actions__save" onClick={() => canvasStore.save()}>
           💾
         </div>
@@ -754,6 +809,9 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
           className={`root_drop ${lastIndex === 0 ? 'empty' : ''}`}
         />
       </div>
+      <dialog open={canvasStore.isPreviewOpened}>
+        <IframePreview canvasStore={canvasStore} />
+      </dialog>
     </div>
   );
 });
@@ -875,7 +933,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
   );
 });
 
-export default function App() {
+export default observer(function App() {
   useEffect(() => {
     const data = localStorage.getItem('canvas')
     if (data){
@@ -883,8 +941,8 @@ export default function App() {
         window.location.search = `id=root`
       }
     }
-
   }, [])
+
   return (
     <div className="App">
       <Builder>
@@ -894,7 +952,8 @@ export default function App() {
           <Canvas canvasStore={canvasStore} elementsStore={elementsStore} />
         </DndProvider>
       </Builder>
+
     </div>
   );
-}
+})
 
