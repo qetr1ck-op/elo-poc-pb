@@ -539,7 +539,7 @@ class CanvasStore {
   // plain structure without mobx/circular refs
   private getPlainNodes() {
     const nodes = toJS(this.nodes);
-console.log(nodes)
+
     return this.removeParentNode({ ...nodes, children: { ...this.nodes.children } }) as RootNode;
   }
 
@@ -565,7 +565,7 @@ console.log(nodes)
       }
 
       const map: Record<string, RowNode> = {};
-
+      this.nodes.globalSettings = data.globalSettings
       this.nodes.children = Object.values(data.children)
         .map((node) => new RowNode({ node, parentNode: this.nodes }))
         .reduce((acc, el) => {
@@ -592,6 +592,43 @@ console.log(nodes)
   setView (v) {
     this.view = v
   }
+  isTemplatesModalOpen = false
+  toggleTemplates(val){
+    this.isTemplatesModalOpen = val
+  }
+
+
+  saveAsTemplate (id){
+      const data = localStorage.getItem('templates');
+
+      let newData
+
+      if (data) {
+        const parsedData = JSON.parse(data)
+        newData = { ...parsedData, [id]: this.getPlainNodes() }
+      } else {
+        newData = { [id]: this.getPlainNodes() }
+      }
+
+      localStorage.setItem('templates', JSON.stringify(newData));
+  }
+
+  loadTemplate(id: string) {
+      const data = localStorage.getItem('templates');
+
+      const parsedData = JSON.parse(data)
+        const nodes = parsedData[id];
+        this.nodes.globalSettings = nodes.globalSettings
+        this.nodes.children = Object.values(nodes.children)
+      .map((node) => new RowNode({ node, parentNode: this.nodes }))
+      .reduce((acc, el) => {
+        acc[el.id] = el;
+        return acc;
+      }, {});
+
+      this.toggleTemplates(false)
+
+    }
 }
 
 const canvasStore = new CanvasStore();
@@ -873,6 +910,9 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
     <div className="builder__canvas">
       <div>Canvas</div>
       <div className="actions">
+        <div className="actions__save" onClick={() => canvasStore.toggleTemplates(true)}>
+          📚
+        </div>
         <div className="actions__save" onClick={() => canvasStore.preview()}>
           👁️
         </div>
@@ -893,9 +933,18 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
           className={`root_drop ${lastIndex === 0 ? 'empty' : ''}`}
         />
       </div>
-      <dialog open={canvasStore.isPreviewOpened}>
-        <IframePreview canvasStore={canvasStore} />
-      </dialog>
+      {canvasStore.isPreviewOpened &&
+        <dialog open={canvasStore.isPreviewOpened}>
+          <IframePreview canvasStore={canvasStore} />
+        </dialog>
+      }
+      {canvasStore.isTemplatesModalOpen &&
+        <TemplateModal 
+          isOpen={canvasStore.isTemplatesModalOpen}
+          handleClose={() => {canvasStore.toggleTemplates(false)}}
+          handleLoad={(id) => {canvasStore.loadTemplate(id)}}
+        />
+      }
     </div>
   );
 });
@@ -950,51 +999,50 @@ const Elements: React.FC<{ elementsStore: ElementsStore }> = observer(({ element
 const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvasStore }) => {
   return (
     <div className="builder__element-settings">
-      {/* {canvasStore?.selectedRowNode &&
-        <>
-          <div>Settings:</div>
-          {canvasStore?.selectedRowNode?.text}-{Object.values(toJS(canvasStore?.selectedRowNode?.children)|| {}).length}
-          <hr />
-        </>
-      } */}
-        <ColorPicker
-            label='Brand'
-            value={canvasStore?.nodes?.globalSettings.palette.brand}
-            onChange={(val) => {
-              canvasStore.updateGlobalSettings('palette', 'brand',  val)
-            }}
-          />
-          <ColorPicker
-            label='Accent'
-            value={canvasStore?.nodes?.globalSettings.palette.accent}
-            onChange={(val) => {
-              canvasStore.updateGlobalSettings('palette', 'accent',  val)
-            }}
-          />
-          <ColorPicker
-            label='Text'
-            value={canvasStore?.nodes?.globalSettings.palette.text}
-            onChange={(val) => {
-              canvasStore.updateGlobalSettings('palette', 'text',  val)
-            }}
-          />
-          <ColorPicker
-            label='Background'
-            value={canvasStore?.nodes?.globalSettings.palette.background}
-            onChange={(val) => {
-              canvasStore.updateGlobalSettings('palette', 'background',  val)
-            }}
-          />
-          <ColorPicker
-            label='On Brand'
-            value={canvasStore?.nodes?.globalSettings.palette.onBrand}
-            onChange={(val) => {
-              canvasStore.updateGlobalSettings('palette', 'onBrand',  val)
-            }}
-          />
+        {canvasStore.selectedNode && 
+          <>
+            <div>Global settings:</div>
+              <ColorPicker
+                label='Brand'
+                value={canvasStore?.nodes.globalSettings.palette.brand}
+                onChange={(val) => {
+                  canvasStore.updateGlobalSettings('palette', 'brand',  val)
+                }}
+              />
+              <ColorPicker
+                label='Accent'
+                value={canvasStore?.nodes.globalSettings.palette.accent}
+                onChange={(val) => {
+                  canvasStore.updateGlobalSettings('palette', 'accent',  val)
+                }}
+              />
+              <ColorPicker
+                label='Text'
+                value={canvasStore?.nodes?.globalSettings.palette.text}
+                onChange={(val) => {
+                  canvasStore.updateGlobalSettings('palette', 'text',  val)
+                }}
+              />
+              <ColorPicker
+                label='Background'
+                value={canvasStore?.nodes?.globalSettings.palette.background}
+                onChange={(val) => {
+                  canvasStore.updateGlobalSettings('palette', 'background',  val)
+                }}
+              />
+              <ColorPicker
+                label='On Brand'
+                value={canvasStore?.nodes?.globalSettings.palette.onBrand}
+                onChange={(val) => {
+                  canvasStore.updateGlobalSettings('palette', 'onBrand',  val)
+                }}
+              />
+            </>
+          }
           <hr/>
       {canvasStore.selectedNode &&
         <>
+         <div>Node settings:</div>
           <RadioSwitch
             label={`Size: `}
             options={[
@@ -1043,14 +1091,8 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
               canvasStore.updateNodeSettings('styling', 'weight',  val)
             }}
           />
-          <hr/>
           {canvasStore.selectedNode.type === 'text-node' &&
           <>
-            <TextInput
-              value={canvasStore.selectedNode.text}
-              onChange={(val)=>{canvasStore.updateNodeText(val)}}
-              label='text'
-            />
             <ColorPicker
             label='Text'
             value={canvasStore?.selectedNode?.localSettings.palette.text || canvasStore?.nodes?.globalSettings.palette.text}
@@ -1065,41 +1107,46 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
               canvasStore.updateNodeSettings('palette', 'background',  val)
             }}
           />
+           <TextInput
+              value={canvasStore.selectedNode.text}
+              onChange={(val)=>{canvasStore.updateNodeText(val)}}
+              label='text'
+            />
           </>
           }
           {canvasStore.selectedNode.type === 'sidebar-node' &&
-          <>
-           <ColorPicker
-              label='Background'
-              value={canvasStore?.selectedNode?.localSettings.palette.brand || canvasStore?.nodes?.globalSettings.palette.brand}
+            <>
+            <ColorPicker
+                label='Background'
+                value={canvasStore?.selectedNode?.localSettings.palette.brand || canvasStore?.nodes?.globalSettings.palette.brand}
+                onChange={(val) => {
+                  canvasStore.updateNodeSettings('palette', 'brand',  val)
+                }}
+              />
+            <ColorPicker
+              label='Text'
+              value={canvasStore?.selectedNode?.localSettings.palette.onBrand || canvasStore?.nodes?.globalSettings.palette.onBrand}
               onChange={(val) => {
-                canvasStore.updateNodeSettings('palette', 'brand',  val)
+                canvasStore.updateNodeSettings('palette', 'onBrand',  val)
               }}
             />
-          <ColorPicker
-            label='Text'
-            value={canvasStore?.selectedNode?.localSettings.palette.onBrand || canvasStore?.nodes?.globalSettings.palette.onBrand}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'onBrand',  val)
-            }}
-          />
-            {canvasStore.selectedNode?.settings.list.map((setting, index) => (
-              <>
-                <TextInput
-                  value={setting.id}
-                  onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, id: val })}}
-                  label='id'
-                  disabled
-                />
-                <TextInput
-                  key={index}
-                  value={setting.name}
-                  onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, name: val })}}
-                  label='name'
-                />
-                <hr/>
-              </>
-            ))}
+              {canvasStore.selectedNode?.settings.list.map((setting, index) => (
+                <>
+                  <TextInput
+                    value={setting.id}
+                    onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, id: val })}}
+                    label='id'
+                    disabled
+                  />
+                  <TextInput
+                    key={index}
+                    value={setting.name}
+                    onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, name: val })}}
+                    label='name'
+                  />
+                  <hr/>
+                </>
+              ))}
             </>
           }
         </>
@@ -1107,6 +1154,48 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
     </div>
   );
 });
+
+const TemplateModal = observer(({isOpen, handleClose, handleLoad}) => {
+  const [templates, setTemplates] = useState([])
+  const [name, setName] = useState('')
+  const reloadTemplates = ()=>{
+    const data = localStorage.getItem('templates');
+  
+      if (data) {
+        const parsedData = JSON.parse(data)
+        setTemplates(parsedData)
+      }
+  }
+  useEffect(()=>{
+    reloadTemplates()
+  }, [])
+  return (
+    <dialog open={isOpen} >
+      <div className='modal'>
+        <button className="close" onClick={() => { handleClose() }}>
+          ❌
+        </button>
+        <p>Templates</p>
+        <div>
+          {Object.keys(templates).map((k, idx) => (
+            <div key={idx}>{k} <button onClick={()=>{handleLoad(k)}}>⬇️</button></div>
+          ))}
+        </div>
+        <hr/>
+        <div className='template_save'>
+          <span>Save current as template: </span>
+          <TextInput value={name} onChange={(val)=>{setName(val)}} />
+          <button onClick={() => {
+             canvasStore.saveAsTemplate(name)
+             reloadTemplates()
+          }}>
+            📙
+          </button>
+        </div>
+      </div>
+    </dialog>
+  )
+})
 
 export default observer(function App() {
   useEffect(() => {

@@ -72,28 +72,62 @@ export const Viewer = ({ nodes }: { nodes: Nodes }) => {
               {Object.values(col.children).map((node, index) => {
                 if (node.type === 'text-node') {
                   return (
-                    <div className={node.className} key={node.id}>
-                      <div className={`text-value `}>{/*${Object.values(node.settings.list).join(' ')}*/}
+                    <div
+                      key={index}
+                      className={node.className}
+                      style={{
+                        background: node.settings.palette.background,
+                        borderRadius: node.settings.styling.radius,
+                      }}
+                    >
+                      <div
+                        className={`text-value`}
+                        style={{
+                          fontSize: node.settings.styling.fontSize,
+                          fontWeight: node.settings.styling.weight,
+                          lineHeight: node.settings.styling.spacing,
+                          color: node.settings.palette.text,
+                        }}
+                      >
                         {node.text}
                       </div>
                     </div>
                   )
                 } else if (node.type === 'sidebar-node') {
                   return (
-                    <ul className='sidebar-node' key={index}>
+                    <ul
+                      key={index}
+                      className='sidebar-node'
+                      style={{
+                        backgroundColor: node.settings.palette.brand,
+                      }}
+                    >
                       {node.settings.list.map(({name, id}, index: number) => {
                         return(
-                          <li key={index} className={`sidebar-node-item`}>
-                            <a href={`/?id=${id}`}>{name}</a>
-                          </li>
+                        <li
+                          key={index}
+                          className={`sidebar-node-item`}
+                        >
+                          <a
+                            href={`/?id=${id}`}
+                            style={{
+                              color: node.settings.palette.onBrand,
+                            }}
+                          >
+                            {name}
+                          </a>
+                        </li>
                       )})}
                     </ul>
                   )
                 } else if (node.type === 'image-node') {
                   return (
-                    <div className={node.className} key={index}>
+                    <div
+                      key={index}
+                      className={node.className}
+                    >
                       <div className={`image-value`}>
-                        {/* <img src={node.settings.list.src} /> */}
+                        <img src={node.settings.src} />
                       </div>
                     </div>
                   )
