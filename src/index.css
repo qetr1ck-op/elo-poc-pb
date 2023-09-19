@@ -336,7 +336,7 @@ dialog iframe {
 /* ================ */
 /* global vars */
 
-:root {
+/* :root {
   --color-brand: #0361F0;
   --color-accent: #F2F5F8;
   --color-background: #FFFFFF;
@@ -348,7 +348,7 @@ dialog iframe {
   --radius: 10px;
   --shadow: none;
   --weight: 500;
-}
+} */
 /* ================ */
 /* color picker */
 .swatch {

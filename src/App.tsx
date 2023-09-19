@@ -86,22 +86,12 @@ interface ImageSettings {
   }
 }
 
-const defaultImageSettings: ImageSettings = {
-  type: 'image-settings',
-  list: {
-    src: 'http://localhost:5173/image.jpg',
-    opacity: 1,
-  }
-}
-
 class ImageElement implements Element {
   type: ElementType = 'image';
   text: string;
-  settings: ImageSettings
 
   constructor(options: { text: string, settings?: ImageSettings }) {
     this.text = options.text;
-    this.settings = options.settings || defaultImageSettings;
   }
 }
 
@@ -164,7 +154,22 @@ class RootNode implements Node {
   text = 'root';
   children: Record<string, RowNode> = {};
   parent = null;
-  globalSettings: GlobalStyling = globalSetting
+  globalSettings: GlobalStyling = {
+     palette: {
+      brand: '#0361F0',
+      accent:  '#F2F5F8',
+      text:  '#000000',
+      background:  '#FFFFFF',
+      onBrand:  '#FFFFFF',
+    },
+    styling: {
+      fontSize:  '16px',
+      weight:  '500',
+      spacing:  '1.5',
+      radius:  '10px',
+      shadow:  'none',
+    },
+  }
 
   constructor(id?: string) {
     makeAutoObservable(this);
@@ -277,25 +282,13 @@ class TextNode implements Node {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
-    this.localSettings = node.localSettings
 
-    if (node.localSettings) {
-     this.localSettings = node.localSettings
+    if(node?.localSettings){
+      this.localSettings = node.localSettings
     }
   }
 
   get settings() {
-
-    // return {
-    //   palette: {
-    //     ...this.parent.parent?.parent?.globalSettings?.palette,
-    //     ...this.localSettings.palette,
-    //   },
-    //   styling: {
-    //     ...this.parent.parent?.parent.globalSettings.styling,
-    //     ...this.localSettings.styling,
-    //   }
-    // }
     // TODO: how to access to globalSettings
     return {
       palette: {
@@ -327,6 +320,10 @@ class ImageNode implements Node {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
+
+    if(node?.localSettings){
+      this.localSettings = node.localSettings
+    }
   }
 
   get settings() {
@@ -360,6 +357,9 @@ class SidebarNode implements Node {
     makeAutoObservable(this)
     this.text = node.text;
     this.parent = parentNode;
+    if(node?.localSettings){
+      this.localSettings = node.localSettings
+    }
   }
 
   get settings() {
@@ -417,22 +417,6 @@ class LocalStorageAdapter implements Adapter {
   }
 }
 
-const globalSetting = {
-  palette: {
-    brand: 'var(--color-brand)',
-    accent:  'var(--color-accent)',
-    text:  'var(--color-background)',
-    background:  'var(--color-text)',
-    onBrand:  'var(--color-on-brand)',
-  },
-  styling: {
-    fontSize:  'var(--font-size)',
-    weight:  'var(--weight)',
-    spacing:  'var(--spacing)',
-    radius:  'var(--radius)',
-    shadow:  'var(--shadow)',
-  },
-}
 class CanvasStore {
   nodes; //
   queryId: string;
@@ -524,7 +508,9 @@ class CanvasStore {
       this.selectedNode.localSettings[part][key] = value
     }
   }
-
+  updateGlobalSettings (part: string, key: string, value: string) {
+    this.nodes.globalSettings[part][key] = value
+  }
   updateNodeText (val: string){
     this.selectedNode.text = val
   }
@@ -964,65 +950,58 @@ const Elements: React.FC<{ elementsStore: ElementsStore }> = observer(({ element
 const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvasStore }) => {
   return (
     <div className="builder__element-settings">
-      {canvasStore?.selectedRowNode &&
+      {/* {canvasStore?.selectedRowNode &&
         <>
-          <div>Block Settings:</div>
+          <div>Settings:</div>
           {canvasStore?.selectedRowNode?.text}-{Object.values(toJS(canvasStore?.selectedRowNode?.children)|| {}).length}
           <hr />
         </>
-      }
-      {canvasStore.selectedNode &&
-        <>
+      } */}
         <ColorPicker
             label='Brand'
-            value={canvasStore?.selectedNode?.settings.palette.brand}
+            value={canvasStore?.nodes?.globalSettings.palette.brand}
             onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'brand',  val)
+              canvasStore.updateGlobalSettings('palette', 'brand',  val)
             }}
           />
           <ColorPicker
             label='Accent'
-            value={canvasStore?.selectedNode?.settings.palette.accent}
+            value={canvasStore?.nodes?.globalSettings.palette.accent}
             onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'accent',  val)
+              canvasStore.updateGlobalSettings('palette', 'accent',  val)
             }}
           />
           <ColorPicker
             label='Text'
-            value={canvasStore?.selectedNode?.settings.palette.text}
+            value={canvasStore?.nodes?.globalSettings.palette.text}
             onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'text',  val)
+              canvasStore.updateGlobalSettings('palette', 'text',  val)
             }}
           />
           <ColorPicker
             label='Background'
-            value={canvasStore?.selectedNode?.settings.palette.background}
+            value={canvasStore?.nodes?.globalSettings.palette.background}
             onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'background',  val)
+              canvasStore.updateGlobalSettings('palette', 'background',  val)
             }}
           />
           <ColorPicker
             label='On Brand'
-            value={canvasStore?.selectedNode?.settings.palette.onBrand}
+            value={canvasStore?.nodes?.globalSettings.palette.onBrand}
             onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'onBrand',  val)
+              canvasStore.updateGlobalSettings('palette', 'onBrand',  val)
             }}
           />
-           <hr/>
+          <hr/>
+      {canvasStore.selectedNode &&
+        <>
           <RadioSwitch
             label={`Size: `}
-            options={[{
-              label: 'Sm',
-              value: `8px`
-            },
-            {
-              label: 'Md',
-              value: `16px`
-            },
-            {
-              label: 'Lg',
-              value: `32px`
-            }]}
+            options={[
+              { label: 'Sm', value: `8px` },
+              { label: 'Md', value: `16px` },
+              { label: 'Lg', value: `32px` },
+            ]}
             value={canvasStore?.selectedNode?.settings.styling.fontSize}
             onChange={(val) => {
               canvasStore.updateNodeSettings('styling', 'fontSize',  val)
@@ -1030,18 +1009,11 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
           />
           <RadioSwitch
             label={`Spacing: `}
-            options={[{
-              label: 'Sm',
-              value: `1`
-            },
-            {
-              label: 'Md',
-              value: `2`
-            },
-            {
-              label: 'Lg',
-              value: `3`
-            }]}
+            options={[
+              { label: 'Sm', value: `1` },
+              { label: 'Md', value: `2` },
+              { label: 'Lg', value: `3` },
+            ]}
             value={canvasStore?.selectedNode?.settings.styling.spacing}
             onChange={(val) => {
               canvasStore.updateNodeSettings('styling', 'spacing',  val)
@@ -1049,18 +1021,11 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
           />
           <RadioSwitch
             label={`Radius: `}
-            options={[{
-              label: 'Sm',
-              value: `5px`
-            },
-            {
-              label: 'Md',
-              value: `10px`
-            },
-            {
-              label: 'Lg',
-              value: `20px`
-            }]}
+            options={[
+              { label: 'Sm', value: `5px` },
+              { label: 'Md', value: `10px` },
+              { label: 'Lg', value: `20px` },
+            ]}
             value={canvasStore?.selectedNode?.settings.styling.radius}
             onChange={(val) => {
               canvasStore.updateNodeSettings('styling', 'radius',  val)
@@ -1068,18 +1033,11 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
           />
           <RadioSwitch
             label={`Weight: `}
-            options={[{
-              label: 'Sm',
-              value: `300`
-            },
-            {
-              label: 'Md',
-              value: `500`
-            },
-            {
-              label: 'Lg',
-              value: `900`
-            }]}
+            options={[
+              { label: 'Sm', value: `300` },
+              { label: 'Md', value: `500` },
+              { label: 'Lg', value: `900` },
+            ]}
             value={canvasStore?.selectedNode?.settings.styling.weight}
             onChange={(val) => {
               canvasStore.updateNodeSettings('styling', 'weight',  val)
@@ -1087,14 +1045,45 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
           />
           <hr/>
           {canvasStore.selectedNode.type === 'text-node' &&
+          <>
             <TextInput
               value={canvasStore.selectedNode.text}
               onChange={(val)=>{canvasStore.updateNodeText(val)}}
               label='text'
             />
+            <ColorPicker
+            label='Text'
+            value={canvasStore?.selectedNode?.localSettings.palette.text || canvasStore?.nodes?.globalSettings.palette.text}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'text',  val)
+            }}
+          />
+          <ColorPicker
+            label='Background'
+            value={canvasStore?.selectedNode?.localSettings.palette.background || canvasStore?.nodes?.globalSettings.palette.background}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'background',  val)
+            }}
+          />
+          </>
           }
           {canvasStore.selectedNode.type === 'sidebar-node' &&
-            canvasStore.selectedNode?.settings.list.map((setting, index) => (
+          <>
+           <ColorPicker
+              label='Background'
+              value={canvasStore?.selectedNode?.localSettings.palette.brand || canvasStore?.nodes?.globalSettings.palette.brand}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('palette', 'brand',  val)
+              }}
+            />
+          <ColorPicker
+            label='Text'
+            value={canvasStore?.selectedNode?.localSettings.palette.onBrand || canvasStore?.nodes?.globalSettings.palette.onBrand}
+            onChange={(val) => {
+              canvasStore.updateNodeSettings('palette', 'onBrand',  val)
+            }}
+          />
+            {canvasStore.selectedNode?.settings.list.map((setting, index) => (
               <>
                 <TextInput
                   value={setting.id}
@@ -1110,50 +1099,11 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
                 />
                 <hr/>
               </>
-            ))
+            ))}
+            </>
           }
         </>
       }
-{/* 
-      {canvasStore.selectedNode?.settings.type === 'text-settings' &&
-        <>
-         <div>Node Settings:</div>
-          {Object.keys(canvasStore.selectedNode?.settings.list).map((settingName) => (
-            <RadioSwitch
-              key={settingName}
-              label={`${settingName}: `}
-              options={[{
-                label: 'Sm',
-                value: `font-${settingName}-sm`
-              },
-              {
-                label: 'Md',
-                value: `font-${settingName}-md`
-              },
-              {
-                label: 'Lg',
-                value: `font-${settingName}-lg`
-              }]}
-              value={canvasStore?.selectedNode?.settings.list[settingName]}
-              onChange={(val) => {
-                canvasStore.updateNodeSettings(settingName,  val)
-              }}
-            />
-         ))}
-         <hr/>
-         <TextInput
-            value={canvasStore.selectedNode.text}
-            onChange={(val)=>{canvasStore.updateNodeText(val)}}
-            label='text'
-          />
-        </>
-      }
-      {canvasStore.selectedNode?.settings.type === 'sidebar-settings' &&
-        <>
-          <div>Node Settings:</div>
-        
-        </>
-      } */}
     </div>
   );
 });

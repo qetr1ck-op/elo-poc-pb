@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react'
 export const ColorPicker = ({ label, value, onChange }) => {
     const [curentValuem, setValue] = useState(value)
     useEffect(() => {
-      onChange(curentValuem)
+      if (value && value !== curentValuem) {
+        onChange(curentValuem)
+      }
     }, [curentValuem])
 
     return (
