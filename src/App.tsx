@@ -580,13 +580,17 @@ class CanvasStore {
   css: string = ''
   view: 'mobile' | 'laptop' = 'laptop'
 
-  setHtml (str) {
-    this.html = str
+  upadatePreview () {
+    const html = renderToString(
+      <Viewer nodes={this.nodes} />
+    )
+    this.html = html
     const css = document.getElementsByTagName('style')[0].innerHTML;
     this.css = css
   }
 
   preview () {
+    this.upadatePreview()
     this.isPreviewOpened = !this.isPreviewOpened
   }
   setView (v) {
@@ -898,13 +902,6 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
     return null
   }
   const lastIndex = Object.values(rootEl?.children).length
-
-  useEffect(() => {
-    const html = renderToString(
-      <Viewer nodes={rootEl} />
-    )
-    canvasStore.setHtml(html)
-  }, [rootEl])
 
   return (
     <div className="builder__canvas">
