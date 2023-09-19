@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react'
 
 export const ColorPicker = ({ label, value, onChange }) => {
-    const [curentValuem, setValue] = useState(value)
+    const [curentValue, setValue] = useState(value)
     useEffect(() => {
-      if (value && value !== curentValuem) {
-        onChange(curentValuem)
+      if (value && value !== curentValue) {
+        onChange(curentValue)
       }
-    }, [curentValuem])
-
+    }, [curentValue])
+    useEffect(() => {
+      if (value !== curentValue) {
+        setValue(value)
+      }
+    }, [value])
     return (
       <div className='switch'>
         <div className='switch-label'>{label}</div>
         <div className='switch-values'>
           <input
             type="color"
-            value={curentValuem}
+            value={curentValue}
             onChange={(e) => {
               setValue(e.target.value)
             }}

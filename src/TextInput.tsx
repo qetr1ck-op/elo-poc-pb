@@ -5,6 +5,11 @@ export const TextInput = ({label, value, onChange, disabled}) => {
     useEffect(() => {
       onChange(curentValue)
     }, [curentValue])
+    useEffect(() => {
+      if (value !== curentValue) {
+        setValue(value)
+      }
+    }, [value])
   return (
     <div className='text-input-wrapper'>
       {label}

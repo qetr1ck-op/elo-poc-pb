@@ -999,51 +999,55 @@ const Elements: React.FC<{ elementsStore: ElementsStore }> = observer(({ element
 const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvasStore }) => {
   return (
     <div className="builder__element-settings">
-        {canvasStore.selectedNode && 
-          <>
-            <div>Global settings:</div>
-              <ColorPicker
-                label='Brand'
-                value={canvasStore?.nodes.globalSettings.palette.brand}
-                onChange={(val) => {
-                  canvasStore.updateGlobalSettings('palette', 'brand',  val)
-                }}
-              />
-              <ColorPicker
-                label='Accent'
-                value={canvasStore?.nodes.globalSettings.palette.accent}
-                onChange={(val) => {
-                  canvasStore.updateGlobalSettings('palette', 'accent',  val)
-                }}
-              />
-              <ColorPicker
-                label='Text'
-                value={canvasStore?.nodes?.globalSettings.palette.text}
-                onChange={(val) => {
-                  canvasStore.updateGlobalSettings('palette', 'text',  val)
-                }}
-              />
-              <ColorPicker
-                label='Background'
-                value={canvasStore?.nodes?.globalSettings.palette.background}
-                onChange={(val) => {
-                  canvasStore.updateGlobalSettings('palette', 'background',  val)
-                }}
-              />
-              <ColorPicker
-                label='On Brand'
-                value={canvasStore?.nodes?.globalSettings.palette.onBrand}
-                onChange={(val) => {
-                  canvasStore.updateGlobalSettings('palette', 'onBrand',  val)
-                }}
-              />
-            </>
-          }
+       <>
+          <div>Global settings:</div>
+            <ColorPicker
+              key='global_brand'
+              label='Brand'
+              value={canvasStore?.nodes.globalSettings.palette.brand}
+              onChange={(val) => {
+                canvasStore.updateGlobalSettings('palette', 'brand',  val)
+              }}
+            />
+            <ColorPicker
+              key='global_accent'
+              label='Accent'
+              value={canvasStore?.nodes.globalSettings.palette.accent}
+              onChange={(val) => {
+                canvasStore.updateGlobalSettings('palette', 'accent',  val)
+              }}
+            />
+            <ColorPicker
+              key='global_text'
+              label='Text'
+              value={canvasStore?.nodes?.globalSettings.palette.text}
+              onChange={(val) => {
+                canvasStore.updateGlobalSettings('palette', 'text',  val)
+              }}
+            />
+            <ColorPicker
+              key='global_background'
+              label='Background'
+              value={canvasStore?.nodes?.globalSettings.palette.background}
+              onChange={(val) => {
+                canvasStore.updateGlobalSettings('palette', 'background',  val)
+              }}
+            />
+            <ColorPicker
+              key='global_onBrand'
+              label='On Brand'
+              value={canvasStore?.nodes?.globalSettings.palette.onBrand}
+              onChange={(val) => {
+                canvasStore.updateGlobalSettings('palette', 'onBrand',  val)
+              }}
+            />
+          </>
           <hr/>
       {canvasStore.selectedNode &&
         <>
          <div>Node settings:</div>
           <RadioSwitch
+            key='local_fontSize'
             label={`Size: `}
             options={[
               { label: 'Sm', value: `8px` },
@@ -1056,6 +1060,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
             }}
           />
           <RadioSwitch
+            key='local_spacing'
             label={`Spacing: `}
             options={[
               { label: 'Sm', value: `1` },
@@ -1068,6 +1073,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
             }}
           />
           <RadioSwitch
+            key='local_radius'
             label={`Radius: `}
             options={[
               { label: 'Sm', value: `5px` },
@@ -1080,6 +1086,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
             }}
           />
           <RadioSwitch
+            key='local_weight'
             label={`Weight: `}
             options={[
               { label: 'Sm', value: `300` },
@@ -1094,51 +1101,58 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
           {canvasStore.selectedNode.type === 'text-node' &&
           <>
             <ColorPicker
-            label='Text'
-            value={canvasStore?.selectedNode?.localSettings.palette.text || canvasStore?.nodes?.globalSettings.palette.text}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'text',  val)
-            }}
-          />
-          <ColorPicker
-            label='Background'
-            value={canvasStore?.selectedNode?.localSettings.palette.background || canvasStore?.nodes?.globalSettings.palette.background}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('palette', 'background',  val)
-            }}
-          />
-           <TextInput
-              value={canvasStore.selectedNode.text}
-              onChange={(val)=>{canvasStore.updateNodeText(val)}}
-              label='text'
+              key='local_text'
+              label='Text'
+              value={canvasStore?.selectedNode?.localSettings.palette.text || canvasStore?.nodes?.globalSettings.palette.text}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('palette', 'text',  val)
+              }}
             />
-          </>
+            <ColorPicker
+              key='local_background'
+              label='Background'
+              value={canvasStore?.selectedNode?.localSettings.palette.background || canvasStore?.nodes?.globalSettings.palette.background}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('palette', 'background',  val)
+              }}
+            />
+            <TextInput
+                key='local_text_val'
+                value={canvasStore.selectedNode.text}
+                onChange={(val)=>{canvasStore.updateNodeText(val)}}
+                label='text'
+              />
+            </>
           }
           {canvasStore.selectedNode.type === 'sidebar-node' &&
             <>
-            <ColorPicker
-                label='Background'
-                value={canvasStore?.selectedNode?.localSettings.palette.brand || canvasStore?.nodes?.globalSettings.palette.brand}
+              <ColorPicker
+                  key='local_brand'
+                  label='Background'
+                  value={canvasStore?.selectedNode?.localSettings.palette.brand || canvasStore?.nodes?.globalSettings.palette.brand}
+                  onChange={(val) => {
+                    canvasStore.updateNodeSettings('palette', 'brand',  val)
+                  }}
+                />
+              <ColorPicker
+                key='local_text'
+                label='Text'
+                value={canvasStore?.selectedNode?.localSettings.palette.onBrand || canvasStore?.nodes?.globalSettings.palette.onBrand}
                 onChange={(val) => {
-                  canvasStore.updateNodeSettings('palette', 'brand',  val)
+                  canvasStore.updateNodeSettings('palette', 'onBrand',  val)
                 }}
               />
-            <ColorPicker
-              label='Text'
-              value={canvasStore?.selectedNode?.localSettings.palette.onBrand || canvasStore?.nodes?.globalSettings.palette.onBrand}
-              onChange={(val) => {
-                canvasStore.updateNodeSettings('palette', 'onBrand',  val)
-              }}
-            />
               {canvasStore.selectedNode?.settings.list.map((setting, index) => (
                 <>
                   <TextInput
+                    key='local_list'
                     value={setting.id}
                     onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, id: val })}}
                     label='id'
                     disabled
                   />
                   <TextInput
+                    key='local_list2'
                     key={index}
                     value={setting.name}
                     onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, name: val })}}

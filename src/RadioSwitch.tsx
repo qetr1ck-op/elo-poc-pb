@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react'
 
 export const RadioSwitch = ({ label, options, value, onChange }) => {
-    const [curentValuem, setValue] = useState(value)
+    const [curentValue, setValue] = useState(value)
     useEffect(() => {
-      onChange(curentValuem)
-    }, [curentValuem])
-
+      onChange(curentValue)
+    }, [curentValue])
+    useEffect(() => {
+      if (value !== curentValue) {
+        setValue(value)
+      }
+    }, [value])
     return (
       <div className='switch'>
         <div className='switch-label'>{label}</div>
@@ -13,7 +17,7 @@ export const RadioSwitch = ({ label, options, value, onChange }) => {
           {options.map((item, index) => (
             <span
               key={index}
-                className={`switch-value${curentValuem === item.value ? ' active' : ''}`}
+                className={`switch-value${curentValue === item.value ? ' active' : ''}`}
                 onClick={() => {
                 setValue(item.value)
                 }}
