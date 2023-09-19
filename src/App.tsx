@@ -743,15 +743,15 @@ const SidebarRenderer = observer(({ node, canvasStore}: {node: SidebarNode, canv
         return(
         <li
           key={index}
-          onClick={() => {
-            // canvasStore.setActiveCanvas()
-          }}
           className={`sidebar-node-item ${canvasStore.nodes.id === id ? 'active' : ''}`}
         >
           <a
             href={`/?id=${id}`}
             style={{
-              color: node.settings.palette.onBrand,
+              fontSize: node.settings.styling.fontSize,
+              fontWeight: node.settings.styling.weight,
+              lineHeight: node.settings.styling.spacing,
+              color: node.settings.palette.text,
             }}
           >
             {name}
@@ -1043,58 +1043,62 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
       {canvasStore.selectedNode &&
         <>
          <div>Node settings:</div>
-          <RadioSwitch
-            key='local_fontSize'
-            label={`Size: `}
-            options={[
-              { label: 'Sm', value: `8px` },
-              { label: 'Md', value: `16px` },
-              { label: 'Lg', value: `32px` },
-            ]}
-            value={canvasStore?.selectedNode?.settings.styling.fontSize}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('styling', 'fontSize',  val)
-            }}
-          />
-          <RadioSwitch
-            key='local_spacing'
-            label={`Spacing: `}
-            options={[
-              { label: 'Sm', value: `1` },
-              { label: 'Md', value: `2` },
-              { label: 'Lg', value: `3` },
-            ]}
-            value={canvasStore?.selectedNode?.settings.styling.spacing}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('styling', 'spacing',  val)
-            }}
-          />
-          <RadioSwitch
-            key='local_radius'
-            label={`Radius: `}
-            options={[
-              { label: 'Sm', value: `5px` },
-              { label: 'Md', value: `10px` },
-              { label: 'Lg', value: `20px` },
-            ]}
-            value={canvasStore?.selectedNode?.settings.styling.radius}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('styling', 'radius',  val)
-            }}
-          />
-          <RadioSwitch
-            key='local_weight'
-            label={`Weight: `}
-            options={[
-              { label: 'Sm', value: `300` },
-              { label: 'Md', value: `500` },
-              { label: 'Lg', value: `900` },
-            ]}
-            value={canvasStore?.selectedNode?.settings.styling.weight}
-            onChange={(val) => {
-              canvasStore.updateNodeSettings('styling', 'weight',  val)
-            }}
-          />
+          {canvasStore.selectedNode.type !== 'image-node' &&
+            <>
+              <RadioSwitch
+              key='local_fontSize'
+              label={`Size: `}
+              options={[
+                { label: 'Sm', value: `8px` },
+                { label: 'Md', value: `16px` },
+                { label: 'Lg', value: `32px` },
+              ]}
+              value={canvasStore?.selectedNode?.settings.styling.fontSize}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('styling', 'fontSize',  val)
+              }}
+            />
+            <RadioSwitch
+              key='local_spacing'
+              label={`Spacing: `}
+              options={[
+                { label: 'Sm', value: `1` },
+                { label: 'Md', value: `2` },
+                { label: 'Lg', value: `3` },
+              ]}
+              value={canvasStore?.selectedNode?.settings.styling.spacing}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('styling', 'spacing',  val)
+              }}
+            />
+            <RadioSwitch
+              key='local_radius'
+              label={`Radius: `}
+              options={[
+                { label: 'Sm', value: `5px` },
+                { label: 'Md', value: `10px` },
+                { label: 'Lg', value: `20px` },
+              ]}
+              value={canvasStore?.selectedNode?.settings.styling.radius}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('styling', 'radius',  val)
+              }}
+            />
+            <RadioSwitch
+              key='local_weight'
+              label={`Weight: `}
+              options={[
+                { label: 'Sm', value: `300` },
+                { label: 'Md', value: `500` },
+                { label: 'Lg', value: `900` },
+              ]}
+              value={canvasStore?.selectedNode?.settings.styling.weight}
+              onChange={(val) => {
+                canvasStore.updateNodeSettings('styling', 'weight',  val)
+              }}
+            />
+          </>
+          }
           {canvasStore.selectedNode.type === 'text-node' &&
           <>
             <ColorPicker
@@ -1140,7 +1144,7 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
                 }}
               />
               {canvasStore.selectedNode?.settings.list.map((setting, index) => (
-                <>
+                <div key={index}>
                   <TextInput
                     key='local_list'
                     value={setting.id}
@@ -1150,13 +1154,12 @@ const ElementSettings: React.FC<{canvasStore: CanvasStore}> = observer(({ canvas
                   />
                   <TextInput
                     key='local_list2'
-                    key={index}
                     value={setting.name}
                     onChange={(val)=>{canvasStore.updateNodeSettings('list', index, { ...setting, name: val })}}
                     label='name'
                   />
-                  <hr/>
-                </>
+                   <hr/>
+                </div>
               ))}
             </>
           }
