@@ -536,11 +536,21 @@ class CanvasStore {
     return node;
   }
 
+  private recoverParentNode(node: Node) {
+    for (const key in node.children) {
+      if (node.children[key]) {
+        node.children[key].parent = node
+        this.recoverParentNode(node.children[key]);
+      }
+    }
+
+    return node;
+  }
   // plain structure without mobx/circular refs
   private getPlainNodes() {
-    const nodes = toJS(this.nodes);
-
-    return this.removeParentNode({ ...nodes, children: { ...this.nodes.children } }) as RootNode;
+    const nodes = this.removeParentNode(toJS(this.nodes));
+    this.recoverParentNode(this.nodes)
+    return (nodes) as RootNode;
   }
 
   save() {
@@ -937,7 +947,6 @@ const DropArea = ({index, className}: {index: number, className?: string}) => {
     <div className={`drop-area ${isOver ? 'drop-area--is-over' : '' } ${className}`} ref={drop}/>
   )
 }
-
 
 const RowNodeRenderer: React.FC<{
   node: RowNode;
