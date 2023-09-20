@@ -907,7 +907,7 @@ const ColNodeRenderer: React.FC<{ node: ColNode; canvasStore: CanvasStore, eleme
         {Object.values(col.children).map((node, index) => {
           // TODO: strategy
           if (node instanceof TextNode) {
-            return <TextNodeRenderer index={index} key={node.id} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
+            return <TextNodeRenderer  key={node.id} index={index} node={node} elementsStore={elementsStore} canvasStore={canvasStore} />;
           } else if (node instanceof SidebarNode) {
             return <SidebarRenderer key={node.id} node={node} canvasStore={canvasStore} />;
           } else if (node instanceof ImageNode) {
@@ -979,8 +979,8 @@ const RowNodeRenderer: React.FC<{
     >
       <NodeControls onRemove={() => canvasStore.removeNode(node)} />
       <DropArea key={index} index={index} />
-      {Object.values(node.children).map((node) => (
-        <ColNodeRenderer key={node.id} node={node} canvasStore={canvasStore} elementsStore={elementsStore} />
+      {Object.values(node.children).map((node, index) => (
+        <ColNodeRenderer key={index} node={node} canvasStore={canvasStore} elementsStore={elementsStore} />
       ))}
     </div>
   );
@@ -1048,7 +1048,7 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
           return <RowNodeRenderer key={`${index}_${node.id}`} index={index} node={node} canvasStore={canvasStore} elementsStore={elementsStore} />
         })}
         <DropArea
-          key={lastIndex}
+          key={'lastIndex'}
           index={lastIndex}
           className={`root_drop ${lastIndex === 0 ? 'empty' : ''}`}
         />
