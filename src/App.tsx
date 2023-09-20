@@ -632,7 +632,117 @@ class CanvasStore {
 
       this.toggleTemplates(false)
 
+  }
+
+  validate (){
+    const dataToValidate = JSON.parse(JSON.stringify(this.getPlainNodes()))
+
+    const expectedNodeShape = {
+      children: {},
+      className: 'string',
+      id: 'string',
+      localSettings: {
+        palette: {
+          accent: 'string',
+          background: "string",
+          brand: "string",
+          onBrand: "string",
+          text: "string",
+        },
+        styling: {
+          fontSize: "string",
+          radius: "string",
+          shadow: "string",
+          spacing: "string",
+          weight: "string",
+        }
+      },
+      parent: null,
+      text: 'string',
+      type: 'string',
     }
+
+    const expectedTextNodeShape = expectedNodeShape
+    const expectedImagetNodeShape = expectedNodeShape
+    const expectedSidebarNodeShape = expectedNodeShape
+
+    const expectedColNodeShape = {
+      children: {
+        1: expectedTextNodeShape,
+        2: expectedImagetNodeShape,
+        3: expectedSidebarNodeShape,
+      },
+      className: 'string',
+      id: 'string',
+      parent: null,
+      text: 'string',
+      type: 'string',
+    }
+    const expectedRowNodeShape = {
+      children: {
+        1: expectedColNodeShape,
+      },
+      className: 'string',
+      id: 'string',
+      parent: null,
+      text: 'string',
+      type: 'string',
+    }
+    const expectedRootNodeShape = {
+      children: {
+        1: expectedRowNodeShape
+      },
+      className: 'string',
+      id: 'string',
+      parent: null,
+      text: 'string',
+      type: 'string',
+      globalSettings: {
+        palette: {
+          accent: 'string',
+          background: "string",
+          brand: "string",
+          onBrand: "string",
+          text: "string",
+        },
+        styling: {
+          fontSize: "string",
+          radius: "string",
+          shadow: "string",
+          spacing: "string",
+          weight: "string",
+        }
+      }
+    }
+
+
+    function validateObjectShape(obj, expectedShape) {
+      for (const key in expectedShape) {
+        const expectedType = expectedShape[key];
+        const actualValue = obj[key];
+        const actualType = typeof actualValue;
+
+        if (typeof expectedType === 'object' && key === 'children') {
+          if (Object.values(actualValue).length > 0) {
+            const v = Object.values(actualValue).find((val) => (
+              Object.values(expectedType).map((exp) => validateObjectShape(val, exp))
+            ))
+            if (!v) return false;
+          }
+        } else if (typeof expectedType === 'object' && key !== 'children') {
+          const v = validateObjectShape(actualValue, expectedType)
+          if (!v) return false;
+        } else if (actualType !== 'object' && actualValue !== undefined && actualType !== expectedType) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
+    console.log('validateObjectShape', validateObjectShape(dataToValidate, expectedRootNodeShape))
+
+  }
 }
 
 const canvasStore = new CanvasStore();
@@ -902,6 +1012,10 @@ const Canvas: React.FC<{ canvasStore: CanvasStore, elementsStore: ElementsStore 
     return null
   }
   const lastIndex = Object.values(rootEl?.children).length
+
+  useEffect(() => {
+    canvasStore.validate()
+  }, [rootEl?.children])
 
   return (
     <div className="builder__canvas">
